@@ -71,11 +71,11 @@ type MarkdownCodeProps = ComponentPropsWithoutRef<"code"> & {
 
 const MODELS = {
   core: {
-    label: "Gemini 3 Flash",
+    label: "Measy Core",
     caption: "Maximum speed",
   },
   pro: {
-    label: "Gemini 3.1 Pro",
+    label: "Measy Pro",
     caption: "Premium reasoning",
   },
 } as const;
@@ -465,11 +465,10 @@ export function DashboardWorkspace({
                 return (
                   <div
                     key={conversation.id}
-                    className={`w-full rounded-xl border p-3 text-left transition ${
-                      isActive
+                    className={`w-full rounded-xl border p-3 text-left transition ${isActive
                         ? "border-accent/40 bg-accent/10"
                         : "border-white/10 bg-white/[0.02] hover:bg-white/[0.05]"
-                    }`}
+                      }`}
                     onContextMenu={(event) => openConversationMenu(event, conversation.id)}
                   >
                     <div className="mb-1 flex items-start justify-between gap-2">
@@ -483,11 +482,10 @@ export function DashboardWorkspace({
                       </button>
                       <div className="flex items-center gap-1">
                         <span
-                          className={`rounded-md px-2 py-0.5 text-[10px] uppercase tracking-[0.14em] ${
-                            conversation.modelKey === "pro"
+                          className={`rounded-md px-2 py-0.5 text-[10px] uppercase tracking-[0.14em] ${conversation.modelKey === "pro"
                               ? "border border-accent/30 bg-accent/10 text-accent2"
                               : "border border-white/10 bg-white/[0.03] text-zinc-400"
-                          }`}
+                            }`}
                         >
                           {conversation.modelKey}
                         </span>
@@ -540,11 +538,10 @@ export function DashboardWorkspace({
                         type="button"
                         onClick={() => setSelectedModel(modelKey)}
                         disabled={isDisabled}
-                        className={`rounded-lg border px-3 py-2 text-xs font-medium transition ${
-                          isSelected
+                        className={`rounded-lg border px-3 py-2 text-xs font-medium transition ${isSelected
                             ? "border-accent/50 bg-accent/15 text-accent2"
                             : "border-white/10 bg-white/[0.03] text-zinc-300 hover:bg-white/[0.06]"
-                        } disabled:cursor-not-allowed disabled:opacity-40`}
+                          } disabled:cursor-not-allowed disabled:opacity-40`}
                       >
                         {MODELS[modelKey].label}
                       </button>
@@ -595,13 +592,12 @@ export function DashboardWorkspace({
                   {messages.map((message) => (
                     <article
                       key={message.id}
-                      className={`max-w-[80%] rounded-2xl border p-4 ${
-                        message.role === "user"
+                      className={`max-w-[80%] rounded-2xl border p-4 ${message.role === "user"
                           ? "ml-auto border-white/20 bg-white/[0.06] text-right"
                           : message.isError
                             ? "mr-auto border-rose-400/40 bg-rose-500/10"
                             : "mr-auto border-white/10 bg-black/20"
-                      }`}
+                        }`}
                     >
                       <p className="mb-2 text-[11px] uppercase tracking-[0.12em] text-zinc-500">
                         {message.role === "user" ? "User" : "MeasyAI"}
