@@ -22,13 +22,15 @@ cp .env.example .env
 
 Fill all required variables, especially:
 
-- `TURSO_DATABASE_URL`
-- `TURSO_AUTH_TOKEN`
+- `DATABASE_TURSO_DATABASE_URL`
+- `DATABASE_TURSO_AUTH_TOKEN`
 - `TURSO_ACCOUNT_ID` and `TURSO_DATABASE_ID` (for Drizzle migrations against Turso)
+- `BETTER_AUTH_TRUSTED_ORIGINS` (comma-separated, include your Vercel app URL)
 - `OPENROUTER_API_KEY`
 - `AI_MODEL_FREE`
 - `AI_MODEL_PRO`
 
+`TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN` are supported as legacy fallback names.
 `DATABASE_URL` is kept as a local fallback for dev-only SQLite.
 
 ## 3) Setup database

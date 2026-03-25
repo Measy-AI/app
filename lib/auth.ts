@@ -4,9 +4,47 @@ import { nextCookies } from "better-auth/next-js";
 import { db } from "@/lib/db";
 import { schema } from "@/lib/schema";
 
+const FORCE_TRUSTED_ORIGIN = "https://app-one-pi-65.vercel.app";
+
+function normalizeOrigin(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return "";
+  }
+
+  try {
+    return new URL(trimmed).origin;
+  } catch {
+    return trimmed.replace(/\/+$/, "");
+  }
+}
+
+function buildTrustedOrigins() {
+  const configuredOrigins = (process.env.BETTER_AUTH_TRUSTED_ORIGINS ?? "")
+    .split(",")
+    .map((origin) => normalizeOrigin(origin))
+    .filter(Boolean);
+
+  const vercelUrl = process.env.VERCEL_URL?.trim();
+  const vercelOrigin = vercelUrl ? normalizeOrigin(`https://${vercelUrl}`) : null;
+
+  return Array.from(
+    new Set(
+      [
+        normalizeOrigin(FORCE_TRUSTED_ORIGIN),
+        normalizeOrigin(`${FORCE_TRUSTED_ORIGIN}/`),
+        normalizeOrigin(process.env.NEXT_PUBLIC_APP_URL ?? ""),
+        normalizeOrigin(process.env.BETTER_AUTH_URL ?? ""),
+        vercelOrigin,
+        ...configuredOrigins,
+      ].filter((origin): origin is string => Boolean(origin)),
+    ),
+  );
+}
+
 export const auth = betterAuth({
   appName: "MeasyAI",
-  baseURL: process.env.BETTER_AUTH_URL,
+  baseURL: process.env.BETTER_AUTH_URL ?? FORCE_TRUSTED_ORIGIN,
   secret: process.env.BETTER_AUTH_SECRET,
   database: drizzleAdapter(db, {
     provider: "sqlite",
@@ -23,5 +61,5 @@ export const auth = betterAuth({
     },
   },
   plugins: [nextCookies()],
-  trustedOrigins: [process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"],
+  trustedOrigins: buildTrustedOrigins(),
 });

@@ -10,6 +10,7 @@
     "lint": "next lint",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
+    "db:migrate:turso": "bun run scripts/apply-turso-migrations.ts",
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
