@@ -13,6 +13,7 @@ import {
 } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { cn } from "@/lib/utils";
 import { SignOutButton } from "@/components/sign-out-button";
 
 type ConversationItem = {
@@ -32,7 +33,8 @@ type MessageItem = {
   isError?: boolean;
 };
 
-type ProVariantKey = "claude" | "gpt";
+type CoreVariantKey = "gemini" | "gpt";
+type ProVariantKey = "claude" | "gpt" | "gemini";
 
 type UsageItem = {
   proUsed: number;
@@ -69,18 +71,24 @@ type MarkdownCodeProps = ComponentPropsWithoutRef<"code"> & {
 
 const MODELS = {
   core: {
-    label: "Measy Core",
-    caption: "Fast everyday model",
+    label: "Gemini 3 Flash",
+    caption: "Maximum speed",
   },
   pro: {
-    label: "Measy Pro",
+    label: "Gemini 3.1 Pro",
     caption: "Premium reasoning",
   },
 } as const;
 
+const CORE_VARIANTS: Record<CoreVariantKey, { label: string }> = {
+  gemini: { label: "Gemini 3 Flash" },
+  gpt: { label: "ChatGPT 5 Mini" },
+};
+
 const PRO_VARIANTS: Record<ProVariantKey, { label: string }> = {
-  claude: { label: "Claude" },
-  gpt: { label: "GPT" },
+  gemini: { label: "Gemini 3.1 Pro" },
+  gpt: { label: "ChatGPT 5.4" },
+  claude: { label: "Claude Sonnet 4.6" },
 };
 
 function MarkdownMessage({ content }: { content: string }) {
@@ -156,8 +164,9 @@ export function DashboardWorkspace({
   const [activeConversation, setActiveConversation] = useState(initialConversation);
   const [messages, setMessages] = useState(initialMessages);
   const [usage, setUsage] = useState(initialUsage);
-  const [selectedModel, setSelectedModel] = useState<"core" | "pro">(initialConversation?.modelKey ?? "core");
-  const [proVariant, setProVariant] = useState<ProVariantKey>("claude");
+  const [selectedModel, setSelectedModel] = useState<"core" | "pro">("core");
+  const [coreVariant, setCoreVariant] = useState<CoreVariantKey>("gemini");
+  const [proVariant, setProVariant] = useState<ProVariantKey>("gemini");
   const [search, setSearch] = useState("");
   const [prompt, setPrompt] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -321,7 +330,8 @@ export function DashboardWorkspace({
           body: JSON.stringify({
             prompt: content,
             modelKey: selectedModel,
-            proVariant,
+            variant: selectedModel === "pro" ? proVariant : coreVariant,
+            conversationId: activeConversation?.id,
           }),
         });
 
@@ -406,6 +416,9 @@ export function DashboardWorkspace({
             </span>
           </div>
           <div className="flex items-center gap-2 text-sm text-zinc-400">
+            <Link href="/dashboard/lagacy" className="hidden sm:block rounded-md px-3 py-2 hover:bg-white/5 hover:text-white">
+              Lagacy Mode
+            </Link>
             <Link href="/settings" className="rounded-md px-3 py-2 hover:bg-white/5 hover:text-white">
               Profile settings
             </Link>
@@ -537,20 +550,32 @@ export function DashboardWorkspace({
                       </button>
                     );
                   })}
-                  {plan === "pro" && selectedModel === "pro" ? (
-                    <select
-                      value={proVariant}
-                      onChange={(event) => setProVariant(event.target.value as ProVariantKey)}
-                      className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-xs font-medium text-zinc-300 outline-none ring-accent transition focus:ring-2"
-                    >
-                      {(Object.keys(PRO_VARIANTS) as ProVariantKey[]).map((variant) => (
-                        <option key={variant} value={variant} className="bg-[#14151a] text-zinc-100">
-                          {PRO_VARIANTS[variant].label}
-                        </option>
-                      ))}
-                    </select>
-                  ) : null}
                 </div>
+              </div>
+              <div className="mt-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                {(selectedModel === "pro" ? Object.entries(PRO_VARIANTS) : Object.entries(CORE_VARIANTS)).map(([key, data]) => {
+                  const isActive = selectedModel === "pro" ? proVariant === key : coreVariant === key;
+                  return (
+                    <button
+                      key={key}
+                      onClick={() => selectedModel === "pro" ? setProVariant(key as ProVariantKey) : setCoreVariant(key as CoreVariantKey)}
+                      className={cn(
+                        "group relative flex items-center gap-3 p-4 rounded-2xl border transition-all duration-300",
+                        isActive
+                          ? "bg-accent/10 border-accent2/50 text-white"
+                          : "bg-zinc-900/40 border-white/5 text-zinc-400 hover:border-white/10 hover:bg-white/5"
+                      )}
+                    >
+                      <div className={cn(
+                        "size-1.5 rounded-full transition-all duration-300",
+                        isActive ? "bg-accent shadow-[0_0_8px_rgba(255,255,0,0.5)]" : "bg-zinc-700"
+                      )} />
+                      <div className="flex flex-col items-start gap-0.5">
+                        <span className="text-[10px] font-black uppercase tracking-widest">{data.label}</span>
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
