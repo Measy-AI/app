@@ -20,6 +20,7 @@ export default function LoginPage() {
   const [turnstileToken, setTurnstileToken] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isDiscordLoading, setIsDiscordLoading] = useState(false);
 
   const turnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? "";
   const turnstileConfigured = useMemo(() => turnstileSiteKey.length > 0, [turnstileSiteKey]);
@@ -90,6 +91,22 @@ export default function LoginPage() {
     window.location.href = "/dashboard";
   };
 
+  const onDiscordSignIn = async () => {
+    setError(null);
+    setIsDiscordLoading(true);
+
+    const { error: discordError } = await authClient.signIn.social({
+      provider: "discord",
+      callbackURL: "/dashboard",
+    });
+
+    if (discordError) {
+      setError(discordError.message ?? "Unable to sign in with Discord.");
+      setIsDiscordLoading(false);
+      return;
+    }
+  };
+
   return (
     <main className="flex min-h-screen items-center justify-center px-6">
       {turnstileConfigured ? (
@@ -98,6 +115,19 @@ export default function LoginPage() {
       <div className="glass w-full max-w-md rounded-2xl p-8">
         <h1 className="mb-2 font-display text-3xl font-bold">Welcome back</h1>
         <p className="mb-6 text-sm text-zinc-400">Sign in to access your MeasyAI workspace.</p>
+        <button
+          type="button"
+          onClick={onDiscordSignIn}
+          disabled={isDiscordLoading || isLoading}
+          className="mb-4 w-full rounded-xl border border-white/15 bg-white/5 px-4 py-3 text-sm font-semibold text-zinc-100 transition hover:bg-white/10 disabled:opacity-60"
+        >
+          {isDiscordLoading ? "Redirecting to Discord..." : "Continue with Discord"}
+        </button>
+        <div className="mb-4 flex items-center gap-3 text-xs uppercase tracking-[0.16em] text-zinc-500">
+          <span className="h-px flex-1 bg-white/10" />
+          <span>or</span>
+          <span className="h-px flex-1 bg-white/10" />
+        </div>
         <form onSubmit={onSubmit} className="space-y-4">
           <input
             type="email"

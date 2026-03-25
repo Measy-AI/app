@@ -23,6 +23,7 @@ export default function RegisterPage() {
   const [turnstileToken, setTurnstileToken] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isDiscordLoading, setIsDiscordLoading] = useState(false);
 
   const turnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? "";
   const turnstileConfigured = useMemo(() => turnstileSiteKey.length > 0, [turnstileSiteKey]);
@@ -103,6 +104,22 @@ export default function RegisterPage() {
     window.location.href = "/dashboard";
   };
 
+  const onDiscordSignIn = async () => {
+    setError(null);
+    setIsDiscordLoading(true);
+
+    const { error: discordError } = await authClient.signIn.social({
+      provider: "discord",
+      callbackURL: "/dashboard",
+    });
+
+    if (discordError) {
+      setError(discordError.message ?? "Unable to continue with Discord.");
+      setIsDiscordLoading(false);
+      return;
+    }
+  };
+
   return (
     <main className="flex min-h-screen items-center justify-center px-6">
       {turnstileConfigured ? (
@@ -111,6 +128,19 @@ export default function RegisterPage() {
       <div className="glass w-full max-w-md rounded-2xl p-8">
         <h1 className="mb-2 font-display text-3xl font-bold">Create account</h1>
         <p className="mb-6 text-sm text-zinc-400">Start free and upgrade whenever you are ready.</p>
+        <button
+          type="button"
+          onClick={onDiscordSignIn}
+          disabled={isDiscordLoading || isLoading}
+          className="mb-4 w-full rounded-xl border border-white/15 bg-white/5 px-4 py-3 text-sm font-semibold text-zinc-100 transition hover:bg-white/10 disabled:opacity-60"
+        >
+          {isDiscordLoading ? "Redirecting to Discord..." : "Continue with Discord"}
+        </button>
+        <div className="mb-4 flex items-center gap-3 text-xs uppercase tracking-[0.16em] text-zinc-500">
+          <span className="h-px flex-1 bg-white/10" />
+          <span>or</span>
+          <span className="h-px flex-1 bg-white/10" />
+        </div>
         <form onSubmit={onSubmit} className="space-y-4">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <input
