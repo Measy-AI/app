@@ -132,16 +132,44 @@ export async function POST(request: Request) {
   });
 
   // Insert AI message
-  await db.insert(message).values({
+  const assistantMsg = {
     conversationId: activeConversationId!,
     role: "assistant",
     content: result.text,
     createdAt: new Date(),
-  });
+  };
+  await db.insert(message).values(assistantMsg);
+
+  // Final record update
+  const isNewConversation = !payload.conversationId;
+  let updatedTitle: string | null = null;
+
+  if (isNewConversation) {
+    try {
+      const { text: aiTitle } = await generateText({
+        model: openrouter("openai/gpt-4o-mini"),
+        system: "Generate a catchy, very short (max 3 words) chat title. Match the user's language (e.g. German if he peaks German). DONT use robotic phrases like 'Assistance Request' or 'User Inquiry'. Be brief and creative. No quotes.",
+        messages: [
+          { role: "user", content: trimmedPrompt },
+          { role: "assistant", content: result.text }
+        ],
+        maxTokens: 15,
+      });
+
+      if (aiTitle && aiTitle.trim().length > 2) {
+        updatedTitle = aiTitle.trim().replace(/^["']|["']$/g, '');
+      }
+    } catch (e) {
+      console.error("AI Title Gen Failure:", e);
+    }
+  }
 
   await db
     .update(conversation)
-    .set({ updatedAt: new Date() })
+    .set({ 
+      updatedAt: new Date(),
+      ...(updatedTitle ? { title: updatedTitle } : {})
+    })
     .where(eq(conversation.id, activeConversationId!));
 
   if (modelKey === "pro" && dbUser?.plan !== "pro") {

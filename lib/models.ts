@@ -6,17 +6,17 @@ export const PRO_DAILY_LIMIT = 60;
 export const MODEL_CONFIGS = {
   core: {
     key: "core",
-    label: "Gemini 3 Flash",
+    label: "Measy Core",
     badge: "FAST",
     engine: process.env.AI_MODEL_CORE_GEMINI ?? "google/gemini-3-flash-preview",
-    systemPrompt: "You are the Gemini 3 Flash model. Be lightning fast, concise, and helpful.",
+    systemPrompt: "You are Measy Core. Be lightning fast, concise, and helpful.",
   },
   pro: {
     key: "pro",
-    label: "Gemini 3.1 Pro",
+    label: "Measy Pro",
     badge: "PREMIUM",
     engine: process.env.AI_MODEL_PRO_GEMINI ?? "google/gemini-3.1-pro-preview",
-    systemPrompt: "You are the Gemini 3.1 Pro model. Be insightful, strategic, and remarkably intelligent.",
+    systemPrompt: "You are Measy Pro. Be insightful, strategic, and remarkably intelligent.",
   },
 } as const;
 

@@ -13,8 +13,21 @@ import {
 } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { cn } from "@/lib/utils";
+import { cn, toProxyUrl } from "@/lib/utils";
 import { SignOutButton } from "@/components/sign-out-button";
+import { 
+  Zap, 
+  History, 
+  PlusSquare, 
+  Trash2, 
+  User, 
+  Settings, 
+  CreditCard,
+  LogOut,
+  ChevronDown,
+  Sparkles,
+  Layers
+} from "lucide-react";
 
 type ConversationItem = {
   id: string;
@@ -62,6 +75,7 @@ type DashboardWorkspaceProps = {
   initialMessages: MessageItem[];
   initialUsage: UsageItem;
   userName: string;
+  userImage?: string | null;
   plan: string;
 };
 
@@ -158,6 +172,7 @@ export function DashboardWorkspace({
   initialMessages,
   initialUsage,
   userName,
+  userImage,
   plan,
 }: DashboardWorkspaceProps) {
   const [conversations, setConversations] = useState(initialConversations);
@@ -408,27 +423,63 @@ export function DashboardWorkspace({
       <header className="sticky top-0 z-50 border-b border-white/10 bg-[#0a0a0fcc] backdrop-blur-xl">
         <div className="mx-auto flex h-14 w-full max-w-[1400px] items-center justify-between px-4 sm:px-6">
           <div className="flex items-center gap-3">
-            <Link href="/" className="font-display text-xl font-bold tracking-tight">
-              MeasyAI
+            <Link href="/" className="group flex items-center gap-2.5">
+              <div className="size-8 rounded-xl bg-gradient-to-tr from-primary to-accent2 flex items-center justify-center shadow-[0_0_15px_rgba(var(--primary-rgb),0.5)] group-hover:scale-105 transition-transform">
+                <Sparkles className="size-4 text-white" />
+              </div>
+              <h1 className="font-display text-xl font-bold tracking-tight text-white group-hover:text-primary transition-colors">
+                Measy<span className="text-primary italic">AI</span>
+              </h1>
             </Link>
-            <span className="rounded-full border border-accent/30 bg-accent/10 px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] text-accent2">
-              Workspace
+            <div className="h-4 w-px bg-white/10 mx-1 hidden sm:block"></div>
+            <span className="hidden sm:inline-flex rounded-full border border-white/10 bg-white/5 px-2.5 py-0.5 text-[10px] uppercase tracking-[0.2em] font-black text-zinc-500">
+              Workspace v3
             </span>
           </div>
-          <div className="flex items-center gap-2 text-sm text-zinc-400">
-            <Link href="/dashboard/lagacy" className="hidden sm:block rounded-md px-3 py-2 hover:bg-white/5 hover:text-white">
-              Lagacy Mode
+
+          <div className="flex items-center gap-1.5 sm:gap-3">
+            <Link 
+              href="/dashboard/lagacy" 
+              className="hidden md:flex items-center gap-2 h-9 px-4 rounded-xl text-[11px] font-black uppercase tracking-widest text-zinc-400 hover:text-white hover:bg-white/5 border border-transparent hover:border-white/5 transition-all"
+            >
+              <History className="size-3.5" />
+              Legacy Mode
             </Link>
-            <Link href="/settings" className="rounded-md px-3 py-2 hover:bg-white/5 hover:text-white">
-              Profile settings
-            </Link>
-            <Link href="/buy" className="rounded-md px-3 py-2 hover:bg-white/5 hover:text-white">
+            
+            <Link 
+              href="/buy" 
+              className="hidden sm:flex items-center gap-2 h-9 px-4 rounded-xl text-[11px] font-black uppercase tracking-widest text-zinc-400 hover:text-primary hover:bg-primary/10 border border-transparent hover:border-primary/20 transition-all"
+            >
+              <CreditCard className="size-3.5" />
               Upgrade
             </Link>
-            <span className="rounded-md border border-white/10 px-3 py-1.5 text-xs uppercase tracking-[0.14em] text-zinc-300">
+
+            <div className="h-6 w-px bg-white/10 hidden sm:block mx-1"></div>
+
+            <div className={cn(
+              "flex items-center h-8 px-3 rounded-lg text-[10px] font-black uppercase tracking-[0.2em] border shadow-inner",
+              plan === "pro" 
+                ? "bg-accent/10 border-accent/20 text-accent shadow-[0_0_15px_rgba(var(--accent-rgb),0.1)]" 
+                : "bg-white/5 border-white/10 text-zinc-400"
+            )}>
+              {plan === "pro" ? <Zap className="size-3 mr-1.5 fill-accent/20" /> : null}
               {plan}
-            </span>
-            <SignOutButton className="rounded-md border-white/15 px-3 py-2 text-xs" />
+            </div>
+
+            <Link href="/settings" className="group relative shrink-0">
+              <div className="absolute -inset-1 bg-gradient-to-tr from-primary to-accent2 rounded-xl blur-md opacity-0 group-hover:opacity-40 transition-opacity"></div>
+              <div className="size-10 rounded-xl ring-2 ring-white/10 group-hover:ring-primary/40 transition-all bg-[#0d1117] border border-white/5 overflow-hidden flex items-center justify-center p-0.5 shadow-2xl">
+                {userImage ? (
+                  <img src={toProxyUrl(userImage)} alt={userName} className="size-full rounded-lg object-cover" />
+                ) : (
+                  <div className="bg-primary/20 text-primary font-black uppercase text-sm size-full flex items-center justify-center rounded-lg">
+                    {userName[0]}
+                  </div>
+                ) }
+              </div>
+            </Link>
+
+            <SignOutButton className="hidden sm:flex" />
           </div>
         </div>
       </header>
@@ -599,9 +650,25 @@ export function DashboardWorkspace({
                             : "mr-auto border-white/10 bg-black/20"
                         }`}
                     >
-                      <p className="mb-2 text-[11px] uppercase tracking-[0.12em] text-zinc-500">
-                        {message.role === "user" ? "User" : "MeasyAI"}
-                      </p>
+                      <div className="flex items-center gap-3 mb-2">
+                        <div className={cn(
+                          "size-8 rounded-full overflow-hidden border border-white/10 flex items-center justify-center shrink-0",
+                          message.role === "assistant" ? "bg-accent/20" : "bg-white/5"
+                        )}>
+                          {message.role === "user" ? (
+                            userImage ? (
+                              <img src={toProxyUrl(userImage)} alt={userName} className="size-full object-cover" />
+                            ) : (
+                              <div className="text-[10px] font-black">{userName[0]}</div>
+                            )
+                          ) : (
+                            <div className="text-[10px] font-black text-accent2">AI</div>
+                          )}
+                        </div>
+                        <p className="text-[11px] uppercase tracking-[0.12em] text-zinc-500">
+                          {message.role === "user" ? userName : "MeasyAI"}
+                        </p>
+                      </div>
                       {message.role === "user" ? (
                         <p className="whitespace-pre-wrap text-sm leading-7 text-zinc-100">{message.content}</p>
                       ) : message.isError ? (

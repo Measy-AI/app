@@ -21,8 +21,10 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { authClient } from "@/lib/auth-client";
-import { cn } from "@/lib/utils";
+import { cn, toProxyUrl } from "@/lib/utils";
 import ReactMarkdown from "react-markdown";
+import { uploadChatImage } from "@/lib/actions/upload";
+import { toast } from "sonner";
 import remarkGfm from "remark-gfm";
 
 // Translations
@@ -37,15 +39,15 @@ const t = {
   },
   chat: {
     online: "ONLINE",
-    module: "Measy Gemini",
+    module: "Measy Core",
     terminate: "TERMINATE",
     logout: "Log out",
     awaiting: "READY FOR INPUT",
-    neural: "Gemini is initialized and ready",
-    placeholder: "Message Gemini...",
+    neural: "Measy Core is initialized and ready",
+    placeholder: "Message MeasyAI...",
     latency: "High-speed access",
     sandboxed: "Secure environment",
-    engine: "Gemini 3.1 Pro",
+    engine: "Measy Pro",
     online_status: "ONLINE",
     processing: "MeasyAI is thinking..."
   }
@@ -53,7 +55,7 @@ const t = {
 
 // --- Components ---
 
-function ChatMessage({ role, content, avatar }: { role: string; content: string; avatar?: string }) {
+function ChatMessage({ role, content, avatar, name }: { role: string; content: string; avatar?: string; name?: string }) {
   const isAssistant = role === "assistant";
 
   return (
@@ -69,7 +71,7 @@ function ChatMessage({ role, content, avatar }: { role: string; content: string;
             : "bg-zinc-800/50 border-white/5 text-zinc-400 ring-white/10"
         )}>
           {avatar ? (
-            <img src={avatar} alt="Avatar" className="size-full rounded-2xl object-cover" />
+            <img src={toProxyUrl(avatar)} alt="Avatar" className="size-full rounded-2xl object-cover" />
           ) : (
             isAssistant ? <Cpu className="size-5" /> : <div className="text-xs font-black">USER</div>
           )}
@@ -82,7 +84,7 @@ function ChatMessage({ role, content, avatar }: { role: string; content: string;
             "text-[10px] font-black uppercase tracking-[0.2em]",
             isAssistant ? "text-primary" : "text-zinc-500"
           )}>
-            {isAssistant ? "Measy Assistant" : "Authorized User"}
+            {isAssistant ? "Measy Assistant" : (name || "Authorized User")}
           </span>
           <span className="text-[8px] text-white/10 uppercase tracking-widest">
             {new Date().toLocaleTimeString()}
@@ -323,16 +325,18 @@ export default function LegacyDashboardPage() {
     const currentFiles = attachedFiles;
     setUserInput("");
     setAttachedFiles([]);
-
-    setMessages(prev => [...prev, { role: "user", content: currentInput || (currentFiles.length > 0 ? "[Media Attached]" : "") }]);
     setLoading(true);
 
+    const userMsgPreview = currentInput || (currentFiles.length > 0 ? `[Uploading ${currentFiles.length} files...]` : "");
+    setMessages(prev => [...prev, { role: "user", content: userMsgPreview }]);
+
     try {
+      // Step 1: Initial chat call to ensure we have a conversationId if it's new
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          prompt: currentInput,
+          prompt: currentInput || "[User sent images]", 
           modelKey: selectedModel,
           variant: selectedModel === "pro" ? proVariant : coreVariant,
           conversationId: activeSessionId
@@ -340,16 +344,40 @@ export default function LegacyDashboardPage() {
       });
 
       const data = await response.json();
+      const chatId = data.conversation?.id || activeSessionId;
+      
+      if (chatId) {
+        if (data.conversation?.id) setActiveSessionId(chatId);
+        
+        // Step 2: Upload files if any, now that we have a chatId
+        if (currentFiles.length > 0) {
+          const uploadPromises = currentFiles.map(file => {
+            const fd = new FormData();
+            fd.append("file", file);
+            return uploadChatImage(fd, chatId);
+          });
+          const uploaded = await Promise.all(uploadPromises);
+          const urls = uploaded.map(u => u.url);
+          
+          // Optionally notify the AI about the images in a follow-up (or skip if first message handled it)
+          // For now, let's just show them in UI if possible or just log
+          console.log("Uploaded images:", urls);
+        }
 
-      if (data.messages && data.messages.length > 0) {
-        const lastMsg = data.messages[data.messages.length - 1];
-        setMessages(prev => [...prev, { role: "assistant", content: lastMsg.content }]);
+        if (data.messages && data.messages.length > 0) {
+          const lastMsg = data.messages[data.messages.length - 1];
+          setMessages(prev => {
+            const next = [...prev];
+            next[next.length - 1] = { role: "user", content: currentInput || "[Media Sent]" };
+            return [...next, { role: "assistant", content: lastMsg.content }];
+          });
 
-        if (data.conversations) setSessions(data.conversations);
-        if (data.conversation?.id) setActiveSessionId(data.conversation.id);
+          if (data.conversations) setSessions(data.conversations);
+        }
       }
     } catch (e) {
       console.error("Failed to send message", e);
+      toast.error("Upload or send failed");
     } finally {
       setLoading(false);
     }
@@ -405,7 +433,7 @@ export default function LegacyDashboardPage() {
               )}
             >
               <Zap className="size-3" />
-              Core
+              Measy Core
             </button>
             <div className="h-4 w-px bg-white/5"></div>
             <button
@@ -444,7 +472,7 @@ export default function LegacyDashboardPage() {
               <div className="absolute -inset-1 bg-gradient-to-tr from-primary to-accent rounded-2xl blur-md opacity-0 group-hover:opacity-40 transition-opacity"></div>
               <div className="size-10 rounded-2xl ring-2 ring-white/10 hover:ring-primary/40 transition-all bg-[#161b22] border border-white/5 overflow-hidden flex items-center justify-center">
                 {userProfile?.image ? (
-                  <img src={userProfile.image} alt="Profile" className="size-full object-cover" />
+                  <img src={toProxyUrl(userProfile.image)} alt="Profile" className="size-full object-cover" />
                 ) : (
                   <div className="bg-primary/20 text-primary font-black uppercase text-xs size-full flex items-center justify-center">
                     {userProfile?.name?.[0] || 'U'}
@@ -474,6 +502,7 @@ export default function LegacyDashboardPage() {
                     role={msg.role}
                     content={msg.content}
                     avatar={msg.role === 'user' && userProfile?.image ? userProfile.image : ""}
+                    name={msg.role === 'user' ? (userProfile?.name || 'Authorized User') : 'Measy Assistant'}
                   />
                 </div>
               ))
