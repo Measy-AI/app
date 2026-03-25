@@ -1,4 +1,6 @@
-﻿import Link from "next/link";
+import Link from "next/link";
+import { headers } from "next/headers";
+import { auth } from "@/lib/auth";
 
 const integrations = [
   "CraftingStudioPro",
@@ -9,7 +11,10 @@ const integrations = [
   "CaptchaV2",
 ];
 
-export default function HomePage() {
+export default async function HomePage() {
+  const session = await auth.api.getSession({ headers: await headers() });
+  const isLoggedIn = Boolean(session?.user?.id);
+
   return (
     <main className="relative z-10">
       <header className="sticky top-0 z-50 border-b border-white/10 bg-[#0a0a0fcc] backdrop-blur-xl">
@@ -17,8 +22,15 @@ export default function HomePage() {
           <Link href="/" className="font-display text-xl font-bold tracking-tight">MeasyAI</Link>
           <nav className="flex items-center gap-2 text-sm text-zinc-400">
             <Link href="/dashboard" className="rounded-md px-3 py-2 hover:bg-white/5 hover:text-white">Dashboard</Link>
-            <Link href="/login" className="rounded-md px-3 py-2 hover:bg-white/5 hover:text-white">Log in</Link>
-            <Link href="/register" className="rounded-lg bg-accent px-4 py-2 font-medium text-white shadow-glow">Sign Up</Link>
+            {isLoggedIn ? (
+              <Link href="/settings" className="rounded-md px-3 py-2 hover:bg-white/5 hover:text-white">Profile settings</Link>
+            ) : null}
+            {!isLoggedIn ? (
+              <>
+                <Link href="/login" className="rounded-md px-3 py-2 hover:bg-white/5 hover:text-white">Log in</Link>
+                <Link href="/register" className="rounded-lg bg-accent px-4 py-2 font-medium text-white shadow-glow">Sign Up</Link>
+              </>
+            ) : null}
           </nav>
         </div>
       </header>
@@ -107,4 +119,3 @@ export default function HomePage() {
     </main>
   );
 }
-
