@@ -6,7 +6,7 @@ Production-ready Next.js App Router starter built from your landing page with:
 - Better Auth email/password auth
 - Stripe Checkout billing
 - Vercel AI SDK chat endpoint + UI (via OpenRouter)
-- Drizzle ORM with SQLite via libsql
+- Drizzle ORM with Turso (libsql)
 
 ## 1) Install
 
@@ -22,9 +22,14 @@ cp .env.example .env
 
 Fill all required variables, especially:
 
+- `TURSO_DATABASE_URL`
+- `TURSO_AUTH_TOKEN`
+- `TURSO_ACCOUNT_ID` and `TURSO_DATABASE_ID` (for Drizzle migrations against Turso)
 - `OPENROUTER_API_KEY`
 - `AI_MODEL_FREE`
 - `AI_MODEL_PRO`
+
+`DATABASE_URL` is kept as a local fallback for dev-only SQLite.
 
 ## 3) Setup database
 
