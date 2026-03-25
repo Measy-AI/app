@@ -1,23 +1,12 @@
 import { NextResponse } from "next/server";
-import { isBlockedEmail } from "@/lib/blocked-email";
 import { verifyTurnstileToken } from "@/lib/turnstile";
 
 export async function POST(request: Request) {
   const payload = (await request.json().catch(() => ({}))) as {
-    email?: string;
     turnstileToken?: string;
   };
 
-  const email = payload.email?.trim().toLowerCase();
   const turnstileToken = payload.turnstileToken?.trim();
-
-  if (!email) {
-    return NextResponse.json({ error: "Email is required." }, { status: 400 });
-  }
-
-  if (isBlockedEmail(email)) {
-    return NextResponse.json({ error: "This email provider is not allowed." }, { status: 400 });
-  }
 
   if (!turnstileToken) {
     return NextResponse.json({ error: "Turnstile token is required." }, { status: 400 });
