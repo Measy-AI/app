@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { generateText } from "ai";
-import { openai } from "@ai-sdk/openai";
+import { createOpenAI } from "@ai-sdk/openai";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
@@ -16,6 +16,20 @@ import {
 
 export const maxDuration = 30;
 
+function createOpenRouterProvider() {
+  const appUrl = process.env.OPENROUTER_HTTP_REFERER ?? process.env.NEXT_PUBLIC_APP_URL;
+  const appTitle = process.env.OPENROUTER_APP_TITLE ?? "MeasyAI";
+
+  return createOpenAI({
+    apiKey: process.env.OPENROUTER_API_KEY,
+    baseURL: process.env.OPENROUTER_BASE_URL ?? "https://openrouter.ai/api/v1",
+    headers: {
+      ...(appUrl ? { "HTTP-Referer": appUrl } : {}),
+      ...(appTitle ? { "X-Title": appTitle } : {}),
+    },
+  });
+}
+
 export async function POST(request: Request) {
   const session = await auth.api.getSession({ headers: await headers() });
 
@@ -23,8 +37,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  if (!process.env.OPENAI_API_KEY) {
-    return NextResponse.json({ error: "OPENAI_API_KEY is missing" }, { status: 500 });
+  if (!process.env.OPENROUTER_API_KEY) {
+    return NextResponse.json({ error: "OPENROUTER_API_KEY is missing" }, { status: 500 });
   }
 
   const payload = (await request.json()) as {
@@ -66,9 +80,10 @@ export async function POST(request: Request) {
   });
 
   const modelConfig = getModelConfig(modelKey);
+  const openrouter = createOpenRouterProvider();
 
   const result = await generateText({
-    model: openai(modelConfig.engine),
+    model: openrouter(modelConfig.engine),
     system: modelConfig.systemPrompt,
     messages: [
       {
