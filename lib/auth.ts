@@ -42,9 +42,28 @@ function buildTrustedOrigins() {
   );
 }
 
+function isLocalhostOrigin(origin: string) {
+  return origin.startsWith("http://localhost") || origin.startsWith("http://127.0.0.1");
+}
+
+function resolveAuthBaseUrl() {
+  const configuredBase = normalizeOrigin(process.env.BETTER_AUTH_URL ?? "");
+  const vercelOrigin = normalizeOrigin(process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "");
+
+  if (configuredBase && !isLocalhostOrigin(configuredBase)) {
+    return configuredBase;
+  }
+
+  if (vercelOrigin) {
+    return vercelOrigin;
+  }
+
+  return FORCE_TRUSTED_ORIGIN;
+}
+
 export const auth = betterAuth({
   appName: "MeasyAI",
-  baseURL: process.env.BETTER_AUTH_URL ?? FORCE_TRUSTED_ORIGIN,
+  baseURL: resolveAuthBaseUrl(),
   secret: process.env.BETTER_AUTH_SECRET,
   database: drizzleAdapter(db, {
     provider: "sqlite",
