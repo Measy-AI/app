@@ -1,17 +1,17 @@
 "use client";
 
 import { useState, useEffect, useMemo, useRef, type FormEvent, type KeyboardEvent } from "react";
-import { 
-  Cpu, 
-  Power, 
-  PlusSquare, 
-  Image as ImageIcon, 
-  Globe, 
-  ArrowUpRight, 
-  Zap, 
-  ShieldAlert, 
-  Code2, 
-  X, 
+import {
+  Cpu,
+  Power,
+  PlusSquare,
+  Image as ImageIcon,
+  Globe,
+  ArrowUpRight,
+  Zap,
+  ShieldAlert,
+  Code2,
+  X,
   File as FileIcon,
   Search,
   MessageSquare,
@@ -38,7 +38,6 @@ const t = {
   chat: {
     online: "ONLINE",
     module: "Measy Gemini",
-    online: "ONLINE",
     terminate: "TERMINATE",
     logout: "Log out",
     awaiting: "READY FOR INPUT",
@@ -48,7 +47,7 @@ const t = {
     sandboxed: "Secure environment",
     engine: "Gemini 3.1 Pro",
     online_status: "ONLINE",
-    processing: "NovaGPT is thinking..."
+    processing: "MeasyAI is thinking..."
   }
 };
 
@@ -56,7 +55,7 @@ const t = {
 
 function ChatMessage({ role, content, avatar }: { role: string; content: string; avatar?: string }) {
   const isAssistant = role === "assistant";
-  
+
   return (
     <div className={cn(
       "flex w-full gap-4 px-4 py-8 transition-all group",
@@ -65,8 +64,8 @@ function ChatMessage({ role, content, avatar }: { role: string; content: string;
       <div className="flex flex-col items-center gap-2">
         <div className={cn(
           "size-10 rounded-2xl flex items-center justify-center border transition-all ring-offset-black group-hover:ring-2",
-          isAssistant 
-            ? "bg-primary/20 border-primary/40 text-primary ring-primary/20" 
+          isAssistant
+            ? "bg-primary/20 border-primary/40 text-primary ring-primary/20"
             : "bg-zinc-800/50 border-white/5 text-zinc-400 ring-white/10"
         )}>
           {avatar ? (
@@ -76,7 +75,7 @@ function ChatMessage({ role, content, avatar }: { role: string; content: string;
           )}
         </div>
       </div>
-      
+
       <div className="flex-1 space-y-2">
         <div className="flex items-center gap-2">
           <span className={cn(
@@ -95,7 +94,7 @@ function ChatMessage({ role, content, avatar }: { role: string; content: string;
               <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
             </div>
           ) : (
-             <p className="whitespace-pre-wrap">{content}</p>
+            <p className="whitespace-pre-wrap">{content}</p>
           )}
         </div>
       </div>
@@ -103,18 +102,18 @@ function ChatMessage({ role, content, avatar }: { role: string; content: string;
   );
 }
 
-function ChatSidebar({ 
-  sessions, 
-  activeSessionId, 
-  onNewChat, 
-  onSelectSession, 
-  onDeleteSession 
-}: { 
-  sessions: any[], 
-  activeSessionId: string | null, 
-  onNewChat: () => void, 
-  onSelectSession: (id: string) => void, 
-  onDeleteSession: (id: string) => void 
+function ChatSidebar({
+  sessions,
+  activeSessionId,
+  onNewChat,
+  onSelectSession,
+  onDeleteSession
+}: {
+  sessions: any[],
+  activeSessionId: string | null,
+  onNewChat: () => void,
+  onSelectSession: (id: string) => void,
+  onDeleteSession: (id: string) => void
 }) {
   const [search, setSearch] = useState("");
   const filtered = sessions.filter(s => s.title?.toLowerCase().includes(search.toLowerCase()));
@@ -128,18 +127,18 @@ function ChatSidebar({
           </div>
           <span className="font-display font-black text-xs uppercase tracking-[0.3em] italic">Measy<span className="text-primary italic">AI</span></span>
         </div>
-        
-        <button 
+
+        <button
           onClick={onNewChat}
           className="w-full h-12 rounded-2xl bg-primary text-primary-foreground font-black text-[10px] uppercase tracking-[0.2em] shadow-lg hover:shadow-primary/20 transition-all active:scale-95 flex items-center justify-center gap-2"
         >
           <PlusSquare className="size-4" />
           {t.sidebar.newSession}
         </button>
-        
+
         <div className="relative group">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 size-3 text-zinc-500 group-focus-within:text-primary transition-colors" />
-          <input 
+          <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder={t.sidebar.search}
@@ -153,14 +152,14 @@ function ChatSidebar({
           <span className="text-[9px] font-black uppercase tracking-[0.3em] text-zinc-600">{t.sidebar.history}</span>
           <span className="size-4 rounded bg-white/5 flex items-center justify-center text-[8px] font-black text-zinc-500">{filtered.length}</span>
         </div>
-        
+
         {filtered.map((session) => (
-          <div 
+          <div
             key={session.id}
             className={cn(
               "group relative flex items-center gap-3 px-4 py-3 rounded-2xl border transition-all cursor-pointer",
-              activeSessionId === session.id 
-                ? "bg-primary/10 border-primary/20 shadow-inner" 
+              activeSessionId === session.id
+                ? "bg-primary/10 border-primary/20 shadow-inner"
                 : "bg-transparent border-transparent hover:bg-white/[0.03] hover:border-white/5"
             )}
             onClick={() => onSelectSession(session.id)}
@@ -171,7 +170,7 @@ function ChatSidebar({
             )}>
               <MessageSquare className="size-4" />
             </div>
-            
+
             <div className="flex-1 min-w-0">
               <p className={cn(
                 "text-[10px] font-bold uppercase tracking-widest truncate",
@@ -183,8 +182,8 @@ function ChatSidebar({
                 {new Date(session.updatedAt || session.createdAt).toLocaleDateString()}
               </p>
             </div>
-            
-            <button 
+
+            <button
               onClick={(e) => { e.stopPropagation(); onDeleteSession(session.id); }}
               className="size-7 rounded-lg bg-red-500/10 text-red-500/60 opacity-0 group-hover:opacity-100 hover:bg-red-500/20 hover:text-red-500 transition-all flex items-center justify-center"
             >
@@ -193,7 +192,7 @@ function ChatSidebar({
           </div>
         ))}
       </div>
-      
+
       <div className="p-6 border-t border-white/5 bg-black/20">
         <div className="flex items-center gap-3">
           <div className="size-10 rounded-2xl bg-zinc-800 border border-white/10 flex items-center justify-center text-[10px] font-black italic shadow-inner">QP</div>
@@ -226,7 +225,7 @@ export default function LegacyDashboardPage() {
   const [coreVariant, setCoreVariant] = useState<"gemini" | "gpt">("gemini");
   const [proVariant, setProVariant] = useState<"claude" | "gpt" | "gemini">("gemini");
   const [showProviderMenu, setShowProviderMenu] = useState(false);
-  
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -235,7 +234,7 @@ export default function LegacyDashboardPage() {
       const url = sessionId ? `/api/conversations/${sessionId}` : "/api/conversations";
       const res = await fetch(url);
       const data = await res.json();
-      
+
       if (sessionId) {
         if (data.messages) {
           setMessages(data.messages.map((m: any) => ({
@@ -324,7 +323,7 @@ export default function LegacyDashboardPage() {
     const currentFiles = attachedFiles;
     setUserInput("");
     setAttachedFiles([]);
-    
+
     setMessages(prev => [...prev, { role: "user", content: currentInput || (currentFiles.length > 0 ? "[Media Attached]" : "") }]);
     setLoading(true);
 
@@ -332,8 +331,8 @@ export default function LegacyDashboardPage() {
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          prompt: currentInput, 
+        body: JSON.stringify({
+          prompt: currentInput,
           modelKey: selectedModel,
           variant: selectedModel === "pro" ? proVariant : coreVariant,
           conversationId: activeSessionId
@@ -341,11 +340,11 @@ export default function LegacyDashboardPage() {
       });
 
       const data = await response.json();
-      
+
       if (data.messages && data.messages.length > 0) {
         const lastMsg = data.messages[data.messages.length - 1];
         setMessages(prev => [...prev, { role: "assistant", content: lastMsg.content }]);
-        
+
         if (data.conversations) setSessions(data.conversations);
         if (data.conversation?.id) setActiveSessionId(data.conversation.id);
       }
@@ -370,12 +369,12 @@ export default function LegacyDashboardPage() {
 
   return (
     <div className="flex h-screen bg-[#080a0c] overflow-hidden selection:bg-primary/20 text-white selection:text-white font-sans">
-      <ChatSidebar 
-        sessions={sessions} 
-        activeSessionId={activeSessionId} 
-        onNewChat={createNewChat} 
-        onSelectSession={selectSession} 
-        onDeleteSession={deleteSession} 
+      <ChatSidebar
+        sessions={sessions}
+        activeSessionId={activeSessionId}
+        onNewChat={createNewChat}
+        onSelectSession={selectSession}
+        onDeleteSession={deleteSession}
       />
 
       <main className="flex flex-1 flex-col relative justify-between overflow-hidden min-h-0">
@@ -398,7 +397,7 @@ export default function LegacyDashboardPage() {
           </div>
 
           <div className="flex items-center bg-black/40 border border-white/5 rounded-2xl p-1 gap-1">
-            <button 
+            <button
               onClick={() => setSelectedModel("core")}
               className={cn(
                 "px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all active:scale-95 flex items-center gap-2",
@@ -409,7 +408,7 @@ export default function LegacyDashboardPage() {
               Core
             </button>
             <div className="h-4 w-px bg-white/5"></div>
-            <button 
+            <button
               onClick={() => setSelectedModel("pro")}
               className={cn(
                 "px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all active:scale-95 flex items-center gap-2",
@@ -420,9 +419,9 @@ export default function LegacyDashboardPage() {
               Measy Pro
             </button>
           </div>
-          
+
           <div className="flex items-center gap-6">
-            <Link 
+            <Link
               href="/dashboard"
               className="text-[9px] font-black uppercase tracking-widest text-zinc-500 hover:text-white transition-colors border border-white/10 rounded-lg px-3 py-1.5 hover:bg-white/5"
             >
@@ -440,7 +439,7 @@ export default function LegacyDashboardPage() {
                 <Power className="size-4 text-zinc-500 group-hover:text-destructive transition-all font-bold" />
               </div>
             </button>
-            
+
             <div className="relative group cursor-help shrink-0">
               <div className="absolute -inset-1 bg-gradient-to-tr from-primary to-accent rounded-2xl blur-md opacity-0 group-hover:opacity-40 transition-opacity"></div>
               <div className="size-10 rounded-2xl ring-2 ring-white/10 hover:ring-primary/40 transition-all bg-[#161b22] border border-white/5 overflow-hidden flex items-center justify-center">
@@ -471,15 +470,15 @@ export default function LegacyDashboardPage() {
             ) : (
               messages.map((msg, i) => (
                 <div key={i} className="animate-in fade-in slide-in-from-bottom-4 duration-700 ease-out fill-mode-both">
-                  <ChatMessage 
-                    role={msg.role} 
-                    content={msg.content} 
-                    avatar={msg.role === 'user' && userProfile?.image ? userProfile.image : ""} 
+                  <ChatMessage
+                    role={msg.role}
+                    content={msg.content}
+                    avatar={msg.role === 'user' && userProfile?.image ? userProfile.image : ""}
                   />
                 </div>
               ))
             )}
-            
+
             {loading && (
               <div className="animate-in fade-in slide-in-from-bottom-2 duration-500 fill-mode-both">
                 <ChatMessage role="assistant" content={t.chat.processing} />
@@ -511,23 +510,23 @@ export default function LegacyDashboardPage() {
             )}
 
             <div className="absolute -inset-0.5 bg-gradient-to-r from-primary via-accent to-primary rounded-3xl blur-2xl opacity-0 group-focus-within:opacity-20 transition-all duration-1000"></div>
-            
+
             <div className="relative flex flex-col bg-[#11141a]/90 backdrop-blur-3xl border border-white/5 rounded-3xl p-2.5 transition-all shadow-[0_0_50px_-15px_rgba(0,0,0,0.5)] focus-within:ring-1 focus-within:ring-primary/20 focus-within:border-primary/40">
               <div className="flex items-center gap-1.5 px-3 mb-2 pt-1 border-b border-white/5 pb-2 opacity-60 group-focus-within:opacity-100 transition-opacity">
-                <input 
-                  type="file" 
-                  multiple 
-                  hidden 
+                <input
+                  type="file"
+                  multiple
+                  hidden
                   ref={fileInputRef}
-                  onChange={handleFileUpload} 
+                  onChange={handleFileUpload}
                 />
-                <button 
-                  onClick={() => fileInputRef.current?.click()} 
+                <button
+                  onClick={() => fileInputRef.current?.click()}
                   className="size-7 rounded-lg hover:bg-white/5 text-zinc-500 hover:text-primary flex items-center justify-center transition-colors"
                 >
                   <PlusSquare className="size-4" />
                 </button>
-                <button 
+                <button
                   onClick={() => fileInputRef.current?.click()}
                   className="size-7 rounded-lg hover:bg-white/5 text-zinc-500 hover:text-primary flex items-center justify-center transition-colors"
                 >
@@ -539,7 +538,7 @@ export default function LegacyDashboardPage() {
                 <div className="h-4 w-px bg-white/10 mx-1"></div>
                 {selectedModel === "pro" ? (
                   <div className="relative">
-                    <button 
+                    <button
                       onClick={() => setShowProviderMenu(!showProviderMenu)}
                       className="flex items-center gap-2 px-2.5 py-1 rounded-lg hover:bg-white/5 transition-all group/toggle border border-white/0 hover:border-white/5"
                     >
@@ -549,13 +548,13 @@ export default function LegacyDashboardPage() {
                         <ChevronDown className={cn("size-3 transition-transform", showProviderMenu && "rotate-180")} />
                       </div>
                     </button>
-                    
+
                     {showProviderMenu && (
                       <div className="absolute bottom-full left-0 mb-2 w-48 bg-[#11141a]/95 backdrop-blur-2xl border border-white/10 rounded-2xl p-1.5 shadow-2xl animate-in fade-in slide-in-from-bottom-2 duration-300 z-50">
                         <div className="px-3 py-2 border-b border-white/5 mb-1 text-center">
                           <span className="text-[8px] font-black text-zinc-600 uppercase tracking-widest leading-none">Quantum Core Select</span>
                         </div>
-                        <button 
+                        <button
                           onClick={() => { setProVariant("gemini"); setShowProviderMenu(false); }}
                           className={cn(
                             "w-full flex items-center justify-between px-3 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all",
@@ -565,7 +564,7 @@ export default function LegacyDashboardPage() {
                           Gemini 3.1 Pro
                           {proVariant === "gemini" && <div className="size-1 rounded-full bg-accent shadow-[0_0_5px_rgba(var(--accent-rgb),1)]"></div>}
                         </button>
-                        <button 
+                        <button
                           onClick={() => { setProVariant("gpt"); setShowProviderMenu(false); }}
                           className={cn(
                             "w-full flex items-center justify-between px-3 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all",
@@ -575,7 +574,7 @@ export default function LegacyDashboardPage() {
                           ChatGPT 5.4
                           {proVariant === "gpt" && <div className="size-1 rounded-full bg-accent shadow-[0_0_5px_rgba(var(--accent-rgb),1)]"></div>}
                         </button>
-                        <button 
+                        <button
                           onClick={() => { setProVariant("claude"); setShowProviderMenu(false); }}
                           className={cn(
                             "w-full flex items-center justify-between px-3 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all",
@@ -590,7 +589,7 @@ export default function LegacyDashboardPage() {
                   </div>
                 ) : (
                   <div className="relative">
-                    <button 
+                    <button
                       onClick={() => setShowProviderMenu(!showProviderMenu)}
                       className="flex items-center gap-2 px-2.5 py-1 rounded-lg hover:bg-white/5 transition-all group/toggle border border-white/0 hover:border-white/5"
                     >
@@ -606,7 +605,7 @@ export default function LegacyDashboardPage() {
                         <div className="px-3 py-2 border-b border-white/5 mb-1 text-center">
                           <span className="text-[8px] font-black text-zinc-600 uppercase tracking-widest leading-none">Neural Core Select</span>
                         </div>
-                        <button 
+                        <button
                           onClick={() => { setCoreVariant("gemini"); setShowProviderMenu(false); }}
                           className={cn(
                             "w-full flex items-center justify-between px-3 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all",
@@ -616,7 +615,7 @@ export default function LegacyDashboardPage() {
                           Gemini 3 Flash
                           {coreVariant === "gemini" && <div className="size-1 rounded-full bg-primary shadow-[0_0_5px_rgba(0,112,243,0.5)]"></div>}
                         </button>
-                        <button 
+                        <button
                           onClick={() => { setCoreVariant("gpt"); setShowProviderMenu(false); }}
                           className={cn(
                             "w-full flex items-center justify-between px-3 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all",
@@ -683,7 +682,7 @@ export default function LegacyDashboardPage() {
           </div>
         </footer>
       </main>
-      
+
       <style jsx global>{`
         .custom-scrollbar::-webkit-scrollbar {
           width: 4px;
