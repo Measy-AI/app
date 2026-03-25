@@ -1,9 +1,7 @@
-import { and, asc, desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { conversation, message } from "@/lib/schema";
-
-export const DEFAULT_SYSTEM_PROMPT =
-  "You are MeasyAI, a sharp product copilot. Respond in clean markdown, stay useful, and keep formatting readable.";
+import { PRO_DAILY_LIMIT, getModelConfig, type ModelKey } from "@/lib/models";
+import { conversation, dailyUsage, message } from "@/lib/schema";
 
 export type ConversationRecord = typeof conversation.$inferSelect;
 export type MessageRecord = typeof message.$inferSelect;
@@ -26,14 +24,16 @@ export function deriveConversationTitle(input: string) {
   return concise || "New chat";
 }
 
-export async function createConversation(userId: string, title = "New chat") {
+export async function createConversation(userId: string, title = "New chat", modelKey: ModelKey = "core") {
   const now = new Date();
+  const modelConfig = getModelConfig(modelKey);
   const [created] = await db
     .insert(conversation)
     .values({
       userId,
       title,
-      systemPrompt: DEFAULT_SYSTEM_PROMPT,
+      modelKey,
+      systemPrompt: modelConfig.systemPrompt,
       createdAt: now,
       updatedAt: now,
     })
@@ -68,15 +68,60 @@ export async function getConversationMessages(conversationId: string) {
     .orderBy(asc(message.createdAt));
 }
 
+function getTodayKey() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+export async function incrementUsage(userId: string, modelKey: ModelKey) {
+  const now = new Date();
+  const dateKey = getTodayKey();
+
+  await db
+    .insert(dailyUsage)
+    .values({
+      userId,
+      dateKey,
+      modelKey,
+      count: 1,
+      createdAt: now,
+      updatedAt: now,
+    })
+    .onConflictDoUpdate({
+      target: [dailyUsage.userId, dailyUsage.dateKey, dailyUsage.modelKey],
+      set: {
+        count: sql`${dailyUsage.count} + 1`,
+        updatedAt: now,
+      },
+    });
+}
+
+export async function getUsageSummary(userId: string) {
+  const dateKey = getTodayKey();
+  const usageRows = await db
+    .select()
+    .from(dailyUsage)
+    .where(and(eq(dailyUsage.userId, userId), eq(dailyUsage.dateKey, dateKey)));
+
+  const proUsed = usageRows.find((item) => item.modelKey === "pro")?.count ?? 0;
+
+  return {
+    proUsed,
+    proRemaining: Math.max(0, PRO_DAILY_LIMIT - proUsed),
+    proLimit: PRO_DAILY_LIMIT,
+  };
+}
+
 export async function getWorkspaceState(userId: string, requestedConversationId?: string | null) {
   const conversations = await listConversations(userId);
   const activeConversation =
     (requestedConversationId ? conversations.find((item) => item.id === requestedConversationId) : null) ?? null;
   const messages = activeConversation ? await getConversationMessages(activeConversation.id) : [];
+  const usage = await getUsageSummary(userId);
 
   return {
     conversations,
     activeConversation,
     messages,
+    usage,
   };
 }

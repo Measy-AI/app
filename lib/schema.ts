@@ -82,6 +82,7 @@ export const conversation = sqliteTable(
     id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
     userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
     title: text("title").notNull().default("New chat"),
+    modelKey: text("model_key").notNull().default("core"),
     systemPrompt: text("system_prompt").notNull().default(""),
     createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull().default(sql`(unixepoch() * 1000)`),
     updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull().default(sql`(unixepoch() * 1000)`),
@@ -105,6 +106,22 @@ export const message = sqliteTable(
   }),
 );
 
+export const dailyUsage = sqliteTable(
+  "daily_usage",
+  {
+    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+    userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+    dateKey: text("date_key").notNull(),
+    modelKey: text("model_key").notNull(),
+    count: integer("count").notNull().default(0),
+    createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull().default(sql`(unixepoch() * 1000)`),
+    updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull().default(sql`(unixepoch() * 1000)`),
+  },
+  (table) => ({
+    dailyUsageUniqueIdx: uniqueIndex("daily_usage_user_date_model_unique").on(table.userId, table.dateKey, table.modelKey),
+  }),
+);
+
 export const schema = {
   user,
   session,
@@ -112,4 +129,5 @@ export const schema = {
   verification,
   conversation,
   message,
+  dailyUsage,
 };

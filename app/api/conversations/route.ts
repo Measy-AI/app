@@ -16,5 +16,6 @@ export async function GET() {
     conversation: workspace.activeConversation,
     conversations: workspace.conversations,
     messages: workspace.messages,
+    usage: workspace.usage,
   });
 }

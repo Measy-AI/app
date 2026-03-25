@@ -23,5 +23,6 @@ export async function GET(_: Request, context: { params: Promise<{ id: string }>
     conversation: workspace.activeConversation,
     conversations: workspace.conversations,
     messages: workspace.messages,
+    usage: workspace.usage,
   });
 }

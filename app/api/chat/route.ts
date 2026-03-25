@@ -5,13 +5,13 @@ import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { conversation, message } from "@/lib/schema";
+import { getModelConfig, isModelKey, type ModelKey } from "@/lib/models";
+import { conversation, message, user } from "@/lib/schema";
 import {
-  DEFAULT_SYSTEM_PROMPT,
   createConversation,
   deriveConversationTitle,
-  getConversationMessages,
   getWorkspaceState,
+  incrementUsage,
 } from "@/lib/workspace";
 
 export const maxDuration = 30;
@@ -29,14 +29,34 @@ export async function POST(request: Request) {
 
   const payload = (await request.json()) as {
     prompt?: string;
+    modelKey?: string;
   };
 
   if (!payload.prompt?.trim()) {
     return NextResponse.json({ error: "prompt is required" }, { status: 400 });
   }
 
+  const modelKey: ModelKey = isModelKey(payload.modelKey) ? payload.modelKey : "core";
+  const [dbUser] = await db.select().from(user).where(eq(user.id, session.user.id)).limit(1);
+  const workspace = await getWorkspaceState(session.user.id);
+
+  if (modelKey === "pro" && dbUser?.plan !== "pro" && workspace.usage.proRemaining <= 0) {
+    return NextResponse.json(
+      {
+        error: "Daily Pro limit reached. Upgrade to unlock more premium chats.",
+        upgradeRequired: true,
+        usage: workspace.usage,
+      },
+      { status: 402 },
+    );
+  }
+
   const trimmedPrompt = payload.prompt.trim();
-  const createdConversation = await createConversation(session.user.id, deriveConversationTitle(trimmedPrompt));
+  const createdConversation = await createConversation(
+    session.user.id,
+    deriveConversationTitle(trimmedPrompt),
+    modelKey,
+  );
 
   await db.insert(message).values({
     conversationId: createdConversation.id,
@@ -45,9 +65,11 @@ export async function POST(request: Request) {
     createdAt: new Date(),
   });
 
+  const modelConfig = getModelConfig(modelKey);
+
   const result = await generateText({
-    model: openai(process.env.AI_MODEL ?? "gpt-4o-mini"),
-    system: createdConversation.systemPrompt || DEFAULT_SYSTEM_PROMPT,
+    model: openai(modelConfig.engine),
+    system: modelConfig.systemPrompt,
     messages: [
       {
         role: "user",
@@ -70,11 +92,16 @@ export async function POST(request: Request) {
     })
     .where(eq(conversation.id, createdConversation.id));
 
-  const workspace = await getWorkspaceState(session.user.id, createdConversation.id);
+  if (modelKey === "pro" && dbUser?.plan !== "pro") {
+    await incrementUsage(session.user.id, "pro");
+  }
+
+  const nextWorkspace = await getWorkspaceState(session.user.id, createdConversation.id);
 
   return NextResponse.json({
-    conversation: workspace.activeConversation,
-    conversations: workspace.conversations,
-    messages: workspace.messages,
+    conversation: nextWorkspace.activeConversation,
+    conversations: nextWorkspace.conversations,
+    messages: nextWorkspace.messages,
+    usage: nextWorkspace.usage,
   });
 }

@@ -4,12 +4,14 @@ import { redirect } from "next/navigation";
 import { DashboardWorkspace } from "@/components/dashboard-workspace";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { isModelKey, type ModelKey } from "@/lib/models";
 import { user } from "@/lib/schema";
 import { getWorkspaceState } from "@/lib/workspace";
 
 function toConversationClientModel(item: {
   id: string;
   title: string;
+  modelKey: string;
   systemPrompt: string;
   createdAt: Date;
   updatedAt: Date;
@@ -20,6 +22,7 @@ function toConversationClientModel(item: {
 
   return {
     ...item,
+    modelKey: (isModelKey(item.modelKey) ? item.modelKey : "core") as ModelKey,
     createdAt: item.createdAt.toISOString(),
     updatedAt: item.updatedAt.toISOString(),
   };
@@ -52,10 +55,12 @@ export default async function DashboardPage() {
       initialConversation={toConversationClientModel(workspace.activeConversation)}
       initialConversations={workspace.conversations.map((item) => ({
         ...item,
+        modelKey: (isModelKey(item.modelKey) ? item.modelKey : "core") as ModelKey,
         createdAt: item.createdAt.toISOString(),
         updatedAt: item.updatedAt.toISOString(),
       }))}
       initialMessages={workspace.messages.map(toMessageClientModel)}
+      initialUsage={workspace.usage}
       userName={session.user.name}
       plan={dbUser?.plan ?? "free"}
     />
