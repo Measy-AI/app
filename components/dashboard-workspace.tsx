@@ -5,6 +5,8 @@ import {
   type ComponentPropsWithoutRef,
   type FormEvent,
   type KeyboardEvent,
+  type MouseEvent as ReactMouseEvent,
+  useEffect,
   useMemo,
   useState,
   useTransition,
@@ -43,6 +45,13 @@ type WorkspacePayload = {
   conversations: ConversationItem[];
   messages: MessageItem[];
   usage: UsageItem;
+};
+
+type ContextMenuState = {
+  open: boolean;
+  x: number;
+  y: number;
+  conversationId: string | null;
 };
 
 type DashboardWorkspaceProps = {
@@ -154,6 +163,12 @@ export function DashboardWorkspace({
   const [error, setError] = useState<string | null>(null);
   const [isThinking, setIsThinking] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const [contextMenu, setContextMenu] = useState<ContextMenuState>({
+    open: false,
+    x: 0,
+    y: 0,
+    conversationId: null,
+  });
 
   const filteredConversations = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -167,9 +182,90 @@ export function DashboardWorkspace({
 
   const proLocked = plan !== "pro" && usage.proRemaining <= 0;
 
+  useEffect(() => {
+    if (!contextMenu.open) {
+      return;
+    }
+
+    const closeMenu = () => {
+      setContextMenu({
+        open: false,
+        x: 0,
+        y: 0,
+        conversationId: null,
+      });
+    };
+
+    window.addEventListener("click", closeMenu);
+    window.addEventListener("resize", closeMenu);
+    window.addEventListener("scroll", closeMenu, true);
+
+    return () => {
+      window.removeEventListener("click", closeMenu);
+      window.removeEventListener("resize", closeMenu);
+      window.removeEventListener("scroll", closeMenu, true);
+    };
+  }, [contextMenu.open]);
+
+  function closeConversationMenu() {
+    setContextMenu({
+      open: false,
+      x: 0,
+      y: 0,
+      conversationId: null,
+    });
+  }
+
+  function getMenuPosition(x: number, y: number) {
+    const menuWidth = 196;
+    const menuHeight = 108;
+    const maxX = window.innerWidth - menuWidth - 10;
+    const maxY = window.innerHeight - menuHeight - 10;
+
+    return {
+      x: Math.max(10, Math.min(x, maxX)),
+      y: Math.max(10, Math.min(y, maxY)),
+    };
+  }
+
+  function openConversationMenu(event: ReactMouseEvent<HTMLElement>, conversationId: string) {
+    event.preventDefault();
+    event.stopPropagation();
+    const position = getMenuPosition(event.clientX + 2, event.clientY + 2);
+    setContextMenu({
+      open: true,
+      x: position.x,
+      y: position.y,
+      conversationId,
+    });
+  }
+
+  async function deleteConversation(conversationId: string) {
+    closeConversationMenu();
+    setError(null);
+    setIsThinking(false);
+
+    const response = await fetch(`/api/conversations/${conversationId}`, {
+      method: "DELETE",
+    });
+
+    const payload = (await response.json().catch(() => ({}))) as WorkspacePayload & { error?: string };
+
+    if (!response.ok) {
+      setError(payload.error ?? "Unable to delete conversation.");
+      return;
+    }
+
+    setActiveConversation(payload.conversation);
+    setConversations(payload.conversations);
+    setMessages(payload.messages);
+    setUsage(payload.usage);
+  }
+
   async function loadConversation(conversationId: string) {
     setError(null);
     setIsThinking(false);
+    closeConversationMenu();
 
     const response = await fetch(`/api/conversations/${conversationId}`);
 
@@ -294,6 +390,7 @@ export function DashboardWorkspace({
     setMessages([]);
     setError(null);
     setIsThinking(false);
+    closeConversationMenu();
   }
 
   return (
@@ -309,6 +406,9 @@ export function DashboardWorkspace({
             </span>
           </div>
           <div className="flex items-center gap-2 text-sm text-zinc-400">
+            <Link href="/settings" className="rounded-md px-3 py-2 hover:bg-white/5 hover:text-white">
+              Profile settings
+            </Link>
             <Link href="/buy" className="rounded-md px-3 py-2 hover:bg-white/5 hover:text-white">
               Upgrade
             </Link>
@@ -350,30 +450,44 @@ export function DashboardWorkspace({
               {filteredConversations.map((conversation) => {
                 const isActive = conversation.id === activeConversation?.id;
                 return (
-                  <button
+                  <div
                     key={conversation.id}
-                    type="button"
-                    onClick={() => void loadConversation(conversation.id)}
                     className={`w-full rounded-xl border p-3 text-left transition ${
                       isActive
                         ? "border-accent/40 bg-accent/10"
                         : "border-white/10 bg-white/[0.02] hover:bg-white/[0.05]"
                     }`}
+                    onContextMenu={(event) => openConversationMenu(event, conversation.id)}
                   >
                     <div className="mb-1 flex items-start justify-between gap-2">
-                      <p className="truncate text-sm font-medium text-zinc-100">{conversation.title}</p>
-                      <span
-                        className={`rounded-md px-2 py-0.5 text-[10px] uppercase tracking-[0.14em] ${
-                          conversation.modelKey === "pro"
-                            ? "border border-accent/30 bg-accent/10 text-accent2"
-                            : "border border-white/10 bg-white/[0.03] text-zinc-400"
-                        }`}
+                      <button
+                        type="button"
+                        onClick={() => void loadConversation(conversation.id)}
+                        className="min-w-0 flex-1 text-left"
                       >
-                        {conversation.modelKey}
-                      </span>
+                        <p className="truncate text-sm font-medium text-zinc-100">{conversation.title}</p>
+                        <p className="mt-1 text-xs text-zinc-500">{toTimeLabel(conversation.updatedAt)}</p>
+                      </button>
+                      <div className="flex items-center gap-1">
+                        <span
+                          className={`rounded-md px-2 py-0.5 text-[10px] uppercase tracking-[0.14em] ${
+                            conversation.modelKey === "pro"
+                              ? "border border-accent/30 bg-accent/10 text-accent2"
+                              : "border border-white/10 bg-white/[0.03] text-zinc-400"
+                          }`}
+                        >
+                          {conversation.modelKey}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={(event) => openConversationMenu(event, conversation.id)}
+                          className="rounded-md border border-white/10 px-2 py-1 text-xs text-zinc-300 hover:bg-white/10"
+                        >
+                          ...
+                        </button>
+                      </div>
                     </div>
-                    <p className="text-xs text-zinc-500">{toTimeLabel(conversation.updatedAt)}</p>
-                  </button>
+                  </div>
                 );
               })}
             </div>
@@ -512,6 +626,30 @@ export function DashboardWorkspace({
           </section>
         </div>
       </section>
+      {contextMenu.open && contextMenu.conversationId ? (
+        <div className="fixed inset-0 z-[80]" onClick={closeConversationMenu}>
+          <div
+            className="glass absolute w-48 rounded-xl border border-white/15 p-1 shadow-xl"
+            style={{ top: contextMenu.y, left: contextMenu.x }}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => void loadConversation(contextMenu.conversationId!)}
+              className="w-full rounded-lg px-3 py-2 text-left text-sm text-zinc-200 hover:bg-white/10"
+            >
+              Open chat
+            </button>
+            <button
+              type="button"
+              onClick={() => void deleteConversation(contextMenu.conversationId!)}
+              className="w-full rounded-lg px-3 py-2 text-left text-sm text-rose-300 hover:bg-rose-500/15"
+            >
+              Delete chat
+            </button>
+          </div>
+        </div>
+      ) : null}
     </main>
   );
 }
