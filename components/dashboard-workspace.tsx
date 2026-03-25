@@ -1,7 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { type ComponentPropsWithoutRef, type FormEvent, useMemo, useState, useTransition } from "react";
+import {
+  type ComponentPropsWithoutRef,
+  type FormEvent,
+  type KeyboardEvent,
+  useMemo,
+  useState,
+  useTransition,
+} from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { SignOutButton } from "@/components/sign-out-button";
@@ -20,6 +27,7 @@ type MessageItem = {
   role: string;
   content: string;
   createdAt: string;
+  isError?: boolean;
 };
 
 type UsageItem = {
@@ -169,42 +177,88 @@ export function DashboardWorkspace({
       return;
     }
 
-    const content = prompt;
+    const content = prompt.trim();
+    const localUserMessage: MessageItem = {
+      id: `local-user-${Date.now()}`,
+      role: "user",
+      content,
+      createdAt: new Date().toISOString(),
+    };
+
     setPrompt("");
     setError(null);
+    setActiveConversation(null);
+    setMessages([localUserMessage]);
 
     startTransition(async () => {
-      const response = await fetch("/api/chat", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          prompt: content,
-          modelKey: selectedModel,
-        }),
-      });
+      try {
+        const response = await fetch("/api/chat", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            prompt: content,
+            modelKey: selectedModel,
+          }),
+        });
 
-      const payload = (await response.json()) as WorkspacePayload & { error?: string };
+        const payload = (await response.json().catch(() => ({}))) as WorkspacePayload & {
+          error?: string;
+          usage?: UsageItem;
+        };
 
-      if (!response.ok) {
-        if (payload.usage) {
-          setUsage(payload.usage);
+        if (!response.ok) {
+          if (payload.usage) {
+            setUsage(payload.usage);
+          }
+
+          const errorMessage = payload.error ?? "The model could not respond right now.";
+
+          setMessages((previous) => [
+            ...previous,
+            {
+              id: `local-ai-error-${Date.now()}`,
+              role: "assistant",
+              content: errorMessage,
+              createdAt: new Date().toISOString(),
+              isError: true,
+            },
+          ]);
+          setError(errorMessage);
+          return;
         }
 
-        setError(payload.error ?? "The model could not respond right now.");
-        return;
-      }
-
-      setActiveConversation(payload.conversation);
-      setConversations(payload.conversations);
-      setMessages(payload.messages);
-      setUsage(payload.usage);
-
-      if (payload.conversation?.modelKey) {
-        setSelectedModel(payload.conversation.modelKey);
+        setActiveConversation(payload.conversation);
+        setConversations(payload.conversations);
+        setMessages(payload.messages);
+        setUsage(payload.usage);
+        setError(null);
+        if (payload.conversation?.modelKey) {
+          setSelectedModel(payload.conversation.modelKey);
+        }
+      } catch {
+        const errorMessage = "Network error. Please try again.";
+        setMessages((previous) => [
+          ...previous,
+          {
+            id: `local-ai-error-${Date.now()}`,
+            role: "assistant",
+            content: errorMessage,
+            createdAt: new Date().toISOString(),
+            isError: true,
+          },
+        ]);
+        setError(errorMessage);
       }
     });
+  }
+
+  function handleComposerKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
+    if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
+      event.currentTarget.form?.requestSubmit();
+    }
   }
 
   function resetComposer() {
@@ -363,7 +417,9 @@ export function DashboardWorkspace({
                       className={`max-w-[80%] rounded-2xl border p-4 ${
                         message.role === "user"
                           ? "ml-auto border-white/20 bg-white/[0.06] text-right"
-                          : "mr-auto border-white/10 bg-black/20"
+                          : message.isError
+                            ? "mr-auto border-rose-400/40 bg-rose-500/10"
+                            : "mr-auto border-white/10 bg-black/20"
                       }`}
                     >
                       <p className="mb-2 text-[11px] uppercase tracking-[0.12em] text-zinc-500">
@@ -371,6 +427,8 @@ export function DashboardWorkspace({
                       </p>
                       {message.role === "user" ? (
                         <p className="whitespace-pre-wrap text-sm leading-7 text-zinc-100">{message.content}</p>
+                      ) : message.isError ? (
+                        <p className="whitespace-pre-wrap text-sm leading-7 text-rose-200">{message.content}</p>
                       ) : (
                         <MarkdownMessage content={message.content} />
                       )}
@@ -385,6 +443,7 @@ export function DashboardWorkspace({
                 <textarea
                   value={prompt}
                   onChange={(event) => setPrompt(event.target.value)}
+                  onKeyDown={handleComposerKeyDown}
                   placeholder="Message MeasyAI..."
                   className="mb-3 min-h-[90px] w-full resize-none rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm outline-none ring-accent transition focus:ring-2"
                 />
