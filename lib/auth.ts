@@ -43,19 +43,31 @@ function buildTrustedOrigins() {
 }
 
 function isLocalhostOrigin(origin: string) {
-  return origin.startsWith("http://localhost") || origin.startsWith("http://127.0.0.1");
+  try {
+    const parsed = new URL(origin);
+    return parsed.hostname === "localhost" || parsed.hostname === "127.0.0.1";
+  } catch {
+    return origin.includes("localhost") || origin.includes("127.0.0.1");
+  }
 }
 
 function resolveAuthBaseUrl() {
+  const appBase = normalizeOrigin(process.env.NEXT_PUBLIC_APP_URL ?? "");
   const configuredBase = normalizeOrigin(process.env.BETTER_AUTH_URL ?? "");
-  const vercelOrigin = normalizeOrigin(process.env.NEXT_PUBLIC_APP_URL ? `https://${process.env.NEXT_PUBLIC_APP_URL}` : "");
+  const vercelUrl = process.env.VERCEL_URL?.trim();
+  const vercelOrigin = vercelUrl ? normalizeOrigin(`https://${vercelUrl}`) : "";
 
-  if (configuredBase && !isLocalhostOrigin(configuredBase)) {
-    return configuredBase;
+  const candidates = [appBase, configuredBase, vercelOrigin, normalizeOrigin(FORCE_TRUSTED_ORIGIN)].filter(
+    Boolean,
+  ) as string[];
+
+  const nonLocalCandidate = candidates.find((origin) => !isLocalhostOrigin(origin));
+  if (nonLocalCandidate) {
+    return nonLocalCandidate;
   }
 
-  if (vercelOrigin) {
-    return vercelOrigin;
+  if (candidates.length > 0) {
+    return candidates[0]!;
   }
 
   return FORCE_TRUSTED_ORIGIN;
