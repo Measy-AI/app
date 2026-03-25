@@ -21,7 +21,9 @@ export default async function HomePage() {
         <div className="mx-auto flex h-14 w-full max-w-6xl items-center justify-between px-6">
           <Link href="/" className="font-display text-xl font-bold tracking-tight">MeasyAI</Link>
           <nav className="flex items-center gap-2 text-sm text-zinc-400">
-            <Link href="/dashboard" className="rounded-md px-3 py-2 hover:bg-white/5 hover:text-white">Dashboard</Link>
+            {isLoggedIn ? (
+              <Link href="/dashboard" className="rounded-md px-3 py-2 hover:bg-white/5 hover:text-white">Dashboard</Link>
+            ) : null}
             {isLoggedIn ? (
               <Link href="/settings" className="rounded-md px-3 py-2 hover:bg-white/5 hover:text-white">Profile settings</Link>
             ) : null}
@@ -46,7 +48,11 @@ export default async function HomePage() {
           </p>
           <div className="flex flex-wrap items-center justify-center gap-3">
             <Link href="/register" className="rounded-xl bg-accent px-6 py-3 text-sm font-medium text-white shadow-glow">Get started free</Link>
-            <Link href="/dashboard" className="glass rounded-xl px-6 py-3 text-sm font-medium text-zinc-200">Open dashboard</Link>
+            {isLoggedIn ? (
+              <Link href="/dashboard" className="glass rounded-xl px-6 py-3 text-sm font-medium text-zinc-200">Open dashboard</Link>
+            ) : (
+              <Link href="/login" className="glass rounded-xl px-6 py-3 text-sm font-medium text-zinc-200">Log in</Link>
+            )}
           </div>
         </div>
       </section>
