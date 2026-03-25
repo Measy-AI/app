@@ -30,6 +30,8 @@ type MessageItem = {
   isError?: boolean;
 };
 
+type ProVariantKey = "claude" | "gpt";
+
 type UsageItem = {
   proUsed: number;
   proRemaining: number;
@@ -66,6 +68,11 @@ const MODELS = {
     caption: "Premium reasoning",
   },
 } as const;
+
+const PRO_VARIANTS: Record<ProVariantKey, { label: string }> = {
+  claude: { label: "Claude" },
+  gpt: { label: "GPT" },
+};
 
 function MarkdownMessage({ content }: { content: string }) {
   return (
@@ -114,6 +121,20 @@ function toTimeLabel(value: string) {
   });
 }
 
+function ThinkingBubble() {
+  return (
+    <article className="mr-auto max-w-[80%] rounded-2xl border border-accent/25 bg-accent/10 p-4">
+      <p className="mb-2 text-[11px] uppercase tracking-[0.12em] text-accent2">MeasyAI</p>
+      <div className="flex items-center gap-2">
+        <span className="h-2 w-2 animate-bounce rounded-full bg-accent" />
+        <span className="h-2 w-2 animate-bounce rounded-full bg-accent [animation-delay:120ms]" />
+        <span className="h-2 w-2 animate-bounce rounded-full bg-accent [animation-delay:240ms]" />
+        <span className="ml-1 text-xs uppercase tracking-[0.12em] text-zinc-300">Thinking...</span>
+      </div>
+    </article>
+  );
+}
+
 export function DashboardWorkspace({
   initialConversation,
   initialConversations,
@@ -127,9 +148,11 @@ export function DashboardWorkspace({
   const [messages, setMessages] = useState(initialMessages);
   const [usage, setUsage] = useState(initialUsage);
   const [selectedModel, setSelectedModel] = useState<"core" | "pro">(initialConversation?.modelKey ?? "core");
+  const [proVariant, setProVariant] = useState<ProVariantKey>("claude");
   const [search, setSearch] = useState("");
   const [prompt, setPrompt] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [isThinking, setIsThinking] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   const filteredConversations = useMemo(() => {
@@ -146,6 +169,7 @@ export function DashboardWorkspace({
 
   async function loadConversation(conversationId: string) {
     setError(null);
+    setIsThinking(false);
 
     const response = await fetch(`/api/conversations/${conversationId}`);
 
@@ -189,6 +213,7 @@ export function DashboardWorkspace({
     setError(null);
     setActiveConversation(null);
     setMessages([localUserMessage]);
+    setIsThinking(true);
 
     startTransition(async () => {
       try {
@@ -200,6 +225,7 @@ export function DashboardWorkspace({
           body: JSON.stringify({
             prompt: content,
             modelKey: selectedModel,
+            proVariant,
           }),
         });
 
@@ -250,6 +276,8 @@ export function DashboardWorkspace({
           },
         ]);
         setError(errorMessage);
+      } finally {
+        setIsThinking(false);
       }
     });
   }
@@ -265,6 +293,7 @@ export function DashboardWorkspace({
     setActiveConversation(null);
     setMessages([]);
     setError(null);
+    setIsThinking(false);
   }
 
   return (
@@ -394,6 +423,19 @@ export function DashboardWorkspace({
                       </button>
                     );
                   })}
+                  {plan === "pro" && selectedModel === "pro" ? (
+                    <select
+                      value={proVariant}
+                      onChange={(event) => setProVariant(event.target.value as ProVariantKey)}
+                      className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-xs font-medium text-zinc-300 outline-none ring-accent transition focus:ring-2"
+                    >
+                      {(Object.keys(PRO_VARIANTS) as ProVariantKey[]).map((variant) => (
+                        <option key={variant} value={variant} className="bg-[#14151a] text-zinc-100">
+                          {PRO_VARIANTS[variant].label}
+                        </option>
+                      ))}
+                    </select>
+                  ) : null}
                 </div>
               </div>
             </div>
@@ -434,6 +476,7 @@ export function DashboardWorkspace({
                       )}
                     </article>
                   ))}
+                  {isThinking ? <ThinkingBubble /> : null}
                 </div>
               )}
             </div>
@@ -451,7 +494,7 @@ export function DashboardWorkspace({
                   <p className="text-xs text-zinc-500">
                     {selectedModel === "pro"
                       ? plan === "pro"
-                        ? "Unlimited premium tier active."
+                        ? `Unlimited premium tier active (${PRO_VARIANTS[proVariant].label}).`
                         : `${usage.proRemaining} premium messages left today.`
                       : MODELS.core.caption}
                   </p>

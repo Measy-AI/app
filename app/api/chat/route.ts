@@ -5,7 +5,14 @@ import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { getModelConfig, isModelKey, type ModelKey } from "@/lib/models";
+import {
+  getModelConfig,
+  getProVariantConfig,
+  isModelKey,
+  isProVariantKey,
+  type ModelKey,
+  type ProVariantKey,
+} from "@/lib/models";
 import { conversation, message, user } from "@/lib/schema";
 import {
   createConversation,
@@ -44,6 +51,7 @@ export async function POST(request: Request) {
   const payload = (await request.json()) as {
     prompt?: string;
     modelKey?: string;
+    proVariant?: string;
   };
 
   if (!payload.prompt?.trim()) {
@@ -51,6 +59,7 @@ export async function POST(request: Request) {
   }
 
   const modelKey: ModelKey = isModelKey(payload.modelKey) ? payload.modelKey : "core";
+  const proVariant: ProVariantKey = isProVariantKey(payload.proVariant) ? payload.proVariant : "claude";
   const [dbUser] = await db.select().from(user).where(eq(user.id, session.user.id)).limit(1);
   const workspace = await getWorkspaceState(session.user.id);
 
@@ -80,11 +89,16 @@ export async function POST(request: Request) {
   });
 
   const modelConfig = getModelConfig(modelKey);
+  const proVariantConfig = getProVariantConfig(proVariant);
+  const selectedEngine =
+    modelKey === "pro" && dbUser?.plan === "pro" ? proVariantConfig.engine : modelConfig.engine;
+  const selectedSystemPrompt =
+    modelKey === "pro" && dbUser?.plan === "pro" ? proVariantConfig.systemPrompt : modelConfig.systemPrompt;
   const openrouter = createOpenRouterProvider();
 
   const result = await generateText({
-    model: openrouter(modelConfig.engine),
-    system: modelConfig.systemPrompt,
+    model: openrouter(selectedEngine),
+    system: selectedSystemPrompt,
     messages: [
       {
         role: "user",

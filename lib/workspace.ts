@@ -68,6 +68,15 @@ export async function getConversationMessages(conversationId: string) {
     .orderBy(asc(message.createdAt));
 }
 
+export async function deleteConversationById(userId: string, conversationId: string) {
+  const deleted = await db
+    .delete(conversation)
+    .where(and(eq(conversation.id, conversationId), eq(conversation.userId, userId)))
+    .returning({ id: conversation.id });
+
+  return deleted.length > 0;
+}
+
 function getTodayKey() {
   return new Date().toISOString().slice(0, 10);
 }
