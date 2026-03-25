@@ -48,7 +48,7 @@ function isLocalhostOrigin(origin: string) {
 
 function resolveAuthBaseUrl() {
   const configuredBase = normalizeOrigin(process.env.BETTER_AUTH_URL ?? "");
-  const vercelOrigin = normalizeOrigin(process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "");
+  const vercelOrigin = normalizeOrigin(process.env.NEXT_PUBLIC_APP_URL ? `https://${process.env.NEXT_PUBLIC_APP_URL}` : "");
 
   if (configuredBase && !isLocalhostOrigin(configuredBase)) {
     return configuredBase;
