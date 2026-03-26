@@ -8,12 +8,30 @@ import {
   type MouseEvent as ReactMouseEvent,
   useEffect,
   useMemo,
+  useRef,
   useState,
   useTransition,
 } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { cn, toProxyUrl } from "@/lib/utils";
 import { SignOutButton } from "@/components/sign-out-button";
+import { 
+  Zap, 
+  History, 
+  PlusSquare, 
+  Trash2, 
+  User, 
+  Settings, 
+  CreditCard,
+  LogOut,
+  ChevronDown,
+  Sparkles,
+  Layers,
+  Copy,
+  Check
+} from "lucide-react";
+import Editor from "@monaco-editor/react";
 
 type ConversationItem = {
   id: string;
@@ -32,7 +50,8 @@ type MessageItem = {
   isError?: boolean;
 };
 
-type ProVariantKey = "claude" | "gpt";
+type CoreVariantKey = "gemini" | "gpt";
+type ProVariantKey = "claude" | "gpt" | "gemini";
 
 type UsageItem = {
   proUsed: number;
@@ -60,6 +79,7 @@ type DashboardWorkspaceProps = {
   initialMessages: MessageItem[];
   initialUsage: UsageItem;
   userName: string;
+  userImage?: string | null;
   plan: string;
 };
 
@@ -70,7 +90,7 @@ type MarkdownCodeProps = ComponentPropsWithoutRef<"code"> & {
 const MODELS = {
   core: {
     label: "Measy Core",
-    caption: "Fast everyday model",
+    caption: "Maximum speed",
   },
   pro: {
     label: "Measy Pro",
@@ -78,41 +98,131 @@ const MODELS = {
   },
 } as const;
 
-const PRO_VARIANTS: Record<ProVariantKey, { label: string }> = {
-  claude: { label: "Claude" },
-  gpt: { label: "GPT" },
+const CORE_VARIANTS: Record<CoreVariantKey, { label: string }> = {
+  gemini: { label: "Gemini 3 Flash" },
+  gpt: { label: "ChatGPT 5 Mini" },
 };
+
+const PRO_VARIANTS: Record<ProVariantKey, { label: string }> = {
+  gemini: { label: "Gemini 3.1 Pro" },
+  gpt: { label: "ChatGPT 5.4" },
+  claude: { label: "Claude Sonnet 4.6" },
+};
+
+function CodeBlock({ value, language }: { value: string; language?: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const copyToClipboard = () => {
+    navigator.clipboard.writeText(value);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const lineCount = value.split("\n").length;
+  // Dynamic height capped at 600px
+  const height = Math.min(Math.max(lineCount * 22 + 45, 100), 600);
+
+  return (
+    <div className="relative group/code my-10 rounded-2xl border border-white/10 bg-[#0d0d0e] overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.5)] animate-in fade-in slide-in-from-bottom-5 duration-700">
+      {/* Visual Indicator Track */}
+      <div className="absolute left-0 top-0 bottom-0 w-1 bg-accent/20 z-10 group-hover/code:bg-accent/40 transition-colors"></div>
+      
+      {/* Editor Header */}
+      <div className="flex items-center justify-between px-6 py-3 border-b border-white/[0.03] bg-[#0d0d0e]">
+        <div className="flex items-center gap-6">
+          <div className="flex gap-1.5 opacity-60">
+            <div className="size-2.5 rounded-full bg-rose-500/80 shadow-[0_0_8px_rgba(244,63,94,0.3)]"></div>
+            <div className="size-2.5 rounded-full bg-amber-500/80 shadow-[0_0_8px_rgba(245,158,11,0.3)]"></div>
+            <div className="size-2.5 rounded-full bg-emerald-500/80 shadow-[0_0_8px_rgba(16,185,129,0.3)]"></div>
+          </div>
+          <div className="flex items-center gap-2 rounded-lg bg-white/5 border border-white/5 px-3 py-1.5 transition-colors group-hover/code:bg-white/[0.08]">
+             <span className="text-[10px] font-black uppercase tracking-[0.2em] text-accent2 underline decoration-accent/20 underline-offset-4">
+              {language || "source.md"}
+            </span>
+          </div>
+        </div>
+        <button
+          onClick={copyToClipboard}
+          className={cn(
+            "p-2 px-3 rounded-xl transition-all flex items-center gap-2 active:scale-90",
+            copied ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/20" : "bg-white/5 hover:bg-white/[0.12] text-zinc-400 hover:text-white border border-white/5"
+          )}
+        >
+          {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
+          <span className="text-[10px] font-black uppercase tracking-widest">{copied ? "Copied" : "Copy"}</span>
+        </button>
+      </div>
+
+      <div style={{ height: `${height}px` }} className="pl-1 p-2 bg-[#0d0d0e] relative">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,_#1a2a4a_0%,_transparent_100%)] opacity-10 pointer-events-none"></div>
+        <Editor
+          height="100%"
+          language={language || "markdown"}
+          value={value}
+          theme="vs-dark"
+          options={{
+            readOnly: true,
+            minimap: { enabled: false },
+            fontSize: 13,
+            lineNumbers: "on",
+            renderLineHighlight: "all",
+            scrollbar: {
+              vertical: "auto",
+              horizontal: "auto",
+              verticalScrollbarSize: 8,
+              horizontalScrollbarSize: 8,
+            },
+            fontFamily: "'JetBrains Mono', 'Menlo', 'Monaco', 'Courier New', monospace",
+            fontWeight: "500",
+            lineHeight: 22,
+            padding: { top: 20, bottom: 20 },
+            folding: true,
+            scrollBeyondLastLine: false,
+            wordWrap: "on",
+            automaticLayout: true,
+            domReadOnly: true,
+            cursorStyle: "line",
+            contextmenu: false,
+            smoothScrolling: true,
+            fixedOverflowWidgets: true,
+          }}
+        />
+      </div>
+    </div>
+  );
+}
 
 function MarkdownMessage({ content }: { content: string }) {
   return (
-    <div className="text-sm leading-7 text-zinc-100">
+    <div className="text-sm leading-8 text-zinc-100">
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{
-          h1: (props) => <h1 className="mb-3 mt-5 font-display text-2xl font-bold tracking-tight" {...props} />,
-          h2: (props) => <h2 className="mb-3 mt-5 font-display text-xl font-bold tracking-tight" {...props} />,
-          h3: (props) => <h3 className="mb-2 mt-4 font-display text-lg font-bold tracking-tight" {...props} />,
-          p: (props) => <p className="mb-3 last:mb-0 text-zinc-200" {...props} />,
-          ul: (props) => <ul className="mb-3 list-disc space-y-2 pl-5" {...props} />,
-          ol: (props) => <ol className="mb-3 list-decimal space-y-2 pl-5" {...props} />,
+          h1: (props) => <h1 className="mb-4 mt-8 font-display text-2xl font-bold tracking-tight text-white" {...props} />,
+          h2: (props) => <h2 className="mb-3 mt-6 font-display text-xl font-bold tracking-tight text-white" {...props} />,
+          h3: (props) => <h3 className="mb-2 mt-4 font-display text-lg font-bold tracking-tight text-white" {...props} />,
+          p: (props) => <div className="mb-4 last:mb-0 text-zinc-200" {...props} />,
+          ul: (props) => <ul className="mb-4 list-disc space-y-2 pl-6" {...props} />,
+          ol: (props) => <ol className="mb-4 list-decimal space-y-2 pl-6" {...props} />,
           li: (props) => <li className="marker:text-accent2" {...props} />,
-          code: ({ inline, className, children, ...props }: MarkdownCodeProps) =>
-            inline ? (
-              <code className="rounded bg-white/10 px-1.5 py-0.5 text-[0.9em] text-accent2" {...props}>
+          code: ({ inline, className, children, ...props }: MarkdownCodeProps) => {
+            const match = /language-(\w+)/.exec(className || "");
+            const lang = match ? match[1] : undefined;
+            const codeString = String(children).replace(/\n$/, "");
+
+            return inline ? (
+              <code className="rounded bg-white/10 px-1.5 py-0.5 text-[0.9em] text-accent2 font-mono" {...props}>
                 {children}
               </code>
             ) : (
-              <code className={className} {...props}>
-                {children}
-              </code>
-            ),
-          pre: (props) => (
-            <pre className="mb-3 overflow-x-auto rounded-2xl border border-white/10 bg-black/40 p-4 text-xs" {...props} />
-          ),
+              <CodeBlock value={codeString} language={lang} />
+            );
+          },
+          pre: ({ children }) => <>{children}</>,
           blockquote: (props) => (
-            <blockquote className="mb-3 border-l-2 border-accent/50 pl-4 text-zinc-300" {...props} />
+            <blockquote className="my-4 border-l-2 border-accent/50 pl-4 text-zinc-300 italic" {...props} />
           ),
-          a: (props) => <a className="text-accent2 underline decoration-accent/40 underline-offset-4" {...props} />,
+          a: (props) => <a className="text-accent2 underline decoration-accent/40 underline-offset-4 hover:decoration-accent2 transition-all" {...props} />,
         }}
       >
         {content}
@@ -150,14 +260,16 @@ export function DashboardWorkspace({
   initialMessages,
   initialUsage,
   userName,
+  userImage,
   plan,
 }: DashboardWorkspaceProps) {
   const [conversations, setConversations] = useState(initialConversations);
   const [activeConversation, setActiveConversation] = useState(initialConversation);
   const [messages, setMessages] = useState(initialMessages);
   const [usage, setUsage] = useState(initialUsage);
-  const [selectedModel, setSelectedModel] = useState<"core" | "pro">(initialConversation?.modelKey ?? "core");
-  const [proVariant, setProVariant] = useState<ProVariantKey>("claude");
+  const [selectedModel, setSelectedModel] = useState<"core" | "pro">("core");
+  const [coreVariant, setCoreVariant] = useState<CoreVariantKey>("gemini");
+  const [proVariant, setProVariant] = useState<ProVariantKey>("gemini");
   const [search, setSearch] = useState("");
   const [prompt, setPrompt] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -169,6 +281,18 @@ export function DashboardWorkspace({
     y: 0,
     conversationId: null,
   });
+
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  const scrollToBottom = () => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages, isThinking, activeConversation]);
 
   const filteredConversations = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -311,6 +435,14 @@ export function DashboardWorkspace({
     setMessages([localUserMessage]);
     setIsThinking(true);
 
+    if (selectedModel === "pro" && plan !== "pro") {
+      setUsage((prev) => ({
+        ...prev,
+        proUsed: Math.min(prev.proLimit, prev.proUsed + 1),
+        proRemaining: Math.max(0, prev.proRemaining - 1),
+      }));
+    }
+
     startTransition(async () => {
       try {
         const response = await fetch("/api/chat", {
@@ -321,7 +453,8 @@ export function DashboardWorkspace({
           body: JSON.stringify({
             prompt: content,
             modelKey: selectedModel,
-            proVariant,
+            variant: selectedModel === "pro" ? proVariant : coreVariant,
+            conversationId: activeConversation?.id,
           }),
         });
 
@@ -398,24 +531,63 @@ export function DashboardWorkspace({
       <header className="sticky top-0 z-50 border-b border-white/10 bg-[#0a0a0fcc] backdrop-blur-xl">
         <div className="mx-auto flex h-14 w-full max-w-[1400px] items-center justify-between px-4 sm:px-6">
           <div className="flex items-center gap-3">
-            <Link href="/" className="font-display text-xl font-bold tracking-tight">
-              MeasyAI
+            <Link href="/" className="group flex items-center gap-2.5">
+              <div className="size-8 rounded-xl bg-gradient-to-tr from-primary to-accent2 flex items-center justify-center shadow-[0_0_15px_rgba(var(--primary-rgb),0.5)] group-hover:scale-105 transition-transform">
+                <Sparkles className="size-4 text-white" />
+              </div>
+              <h1 className="font-display text-xl font-bold tracking-tight text-white group-hover:text-primary transition-colors">
+                Measy<span className="text-primary italic">AI</span>
+              </h1>
             </Link>
-            <span className="rounded-full border border-accent/30 bg-accent/10 px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] text-accent2">
-              Workspace
+            <div className="h-4 w-px bg-white/10 mx-1 hidden sm:block"></div>
+            <span className="hidden sm:inline-flex rounded-full border border-white/10 bg-white/5 px-2.5 py-0.5 text-[10px] uppercase tracking-[0.2em] font-black text-zinc-500">
+              Workspace v3
             </span>
           </div>
-          <div className="flex items-center gap-2 text-sm text-zinc-400">
-            <Link href="/settings" className="rounded-md px-3 py-2 hover:bg-white/5 hover:text-white">
-              Profile settings
+
+          <div className="flex items-center gap-1.5 sm:gap-3">
+            <Link 
+              href="/dashboard/lagacy" 
+              className="hidden md:flex items-center gap-2 h-9 px-4 rounded-xl text-[11px] font-black uppercase tracking-widest text-zinc-400 hover:text-white hover:bg-white/5 border border-transparent hover:border-white/5 transition-all"
+            >
+              <History className="size-3.5" />
+              Legacy Mode
             </Link>
-            <Link href="/buy" className="rounded-md px-3 py-2 hover:bg-white/5 hover:text-white">
+            
+            <Link 
+              href="/buy" 
+              className="hidden sm:flex items-center gap-2 h-9 px-4 rounded-xl text-[11px] font-black uppercase tracking-widest text-zinc-400 hover:text-primary hover:bg-primary/10 border border-transparent hover:border-primary/20 transition-all"
+            >
+              <CreditCard className="size-3.5" />
               Upgrade
             </Link>
-            <span className="rounded-md border border-white/10 px-3 py-1.5 text-xs uppercase tracking-[0.14em] text-zinc-300">
+
+            <div className="h-6 w-px bg-white/10 hidden sm:block mx-1"></div>
+
+            <div className={cn(
+              "flex items-center h-8 px-3 rounded-lg text-[10px] font-black uppercase tracking-[0.2em] border shadow-inner",
+              plan === "pro" 
+                ? "bg-accent/10 border-accent/20 text-accent shadow-[0_0_15px_rgba(var(--accent-rgb),0.1)]" 
+                : "bg-white/5 border-white/10 text-zinc-400"
+            )}>
+              {plan === "pro" ? <Zap className="size-3 mr-1.5 fill-accent/20" /> : null}
               {plan}
-            </span>
-            <SignOutButton className="rounded-md border-white/15 px-3 py-2 text-xs" />
+            </div>
+
+            <Link href="/settings" className="group relative shrink-0">
+              <div className="absolute -inset-1 bg-gradient-to-tr from-primary to-accent2 rounded-xl blur-md opacity-0 group-hover:opacity-40 transition-opacity"></div>
+              <div className="size-10 rounded-xl ring-2 ring-white/10 group-hover:ring-primary/40 transition-all bg-[#0d1117] border border-white/5 overflow-hidden flex items-center justify-center p-0.5 shadow-2xl">
+                {userImage ? (
+                  <img src={toProxyUrl(userImage)} alt={userName} className="size-full rounded-lg object-cover" />
+                ) : (
+                  <div className="bg-primary/20 text-primary font-black uppercase text-sm size-full flex items-center justify-center rounded-lg">
+                    {userName[0]}
+                  </div>
+                ) }
+              </div>
+            </Link>
+
+            <SignOutButton className="hidden sm:flex" />
           </div>
         </div>
       </header>
@@ -452,11 +624,10 @@ export function DashboardWorkspace({
                 return (
                   <div
                     key={conversation.id}
-                    className={`w-full rounded-xl border p-3 text-left transition ${
-                      isActive
+                    className={`w-full rounded-xl border p-3 text-left transition ${isActive
                         ? "border-accent/40 bg-accent/10"
                         : "border-white/10 bg-white/[0.02] hover:bg-white/[0.05]"
-                    }`}
+                      }`}
                     onContextMenu={(event) => openConversationMenu(event, conversation.id)}
                   >
                     <div className="mb-1 flex items-start justify-between gap-2">
@@ -470,11 +641,10 @@ export function DashboardWorkspace({
                       </button>
                       <div className="flex items-center gap-1">
                         <span
-                          className={`rounded-md px-2 py-0.5 text-[10px] uppercase tracking-[0.14em] ${
-                            conversation.modelKey === "pro"
+                          className={`rounded-md px-2 py-0.5 text-[10px] uppercase tracking-[0.14em] ${conversation.modelKey === "pro"
                               ? "border border-accent/30 bg-accent/10 text-accent2"
                               : "border border-white/10 bg-white/[0.03] text-zinc-400"
-                          }`}
+                            }`}
                         >
                           {conversation.modelKey}
                         </span>
@@ -527,34 +697,45 @@ export function DashboardWorkspace({
                         type="button"
                         onClick={() => setSelectedModel(modelKey)}
                         disabled={isDisabled}
-                        className={`rounded-lg border px-3 py-2 text-xs font-medium transition ${
-                          isSelected
+                        className={`rounded-lg border px-3 py-2 text-xs font-medium transition ${isSelected
                             ? "border-accent/50 bg-accent/15 text-accent2"
                             : "border-white/10 bg-white/[0.03] text-zinc-300 hover:bg-white/[0.06]"
-                        } disabled:cursor-not-allowed disabled:opacity-40`}
+                          } disabled:cursor-not-allowed disabled:opacity-40`}
                       >
                         {MODELS[modelKey].label}
                       </button>
                     );
                   })}
-                  {plan === "pro" && selectedModel === "pro" ? (
-                    <select
-                      value={proVariant}
-                      onChange={(event) => setProVariant(event.target.value as ProVariantKey)}
-                      className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-xs font-medium text-zinc-300 outline-none ring-accent transition focus:ring-2"
-                    >
-                      {(Object.keys(PRO_VARIANTS) as ProVariantKey[]).map((variant) => (
-                        <option key={variant} value={variant} className="bg-[#14151a] text-zinc-100">
-                          {PRO_VARIANTS[variant].label}
-                        </option>
-                      ))}
-                    </select>
-                  ) : null}
                 </div>
+              </div>
+              <div className="mt-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                {(selectedModel === "pro" ? Object.entries(PRO_VARIANTS) : Object.entries(CORE_VARIANTS)).map(([key, data]) => {
+                  const isActive = selectedModel === "pro" ? proVariant === key : coreVariant === key;
+                  return (
+                    <button
+                      key={key}
+                      onClick={() => selectedModel === "pro" ? setProVariant(key as ProVariantKey) : setCoreVariant(key as CoreVariantKey)}
+                      className={cn(
+                        "group relative flex items-center gap-3 p-4 rounded-2xl border transition-all duration-300",
+                        isActive
+                          ? "bg-accent/10 border-accent2/50 text-white"
+                          : "bg-zinc-900/40 border-white/5 text-zinc-400 hover:border-white/10 hover:bg-white/5"
+                      )}
+                    >
+                      <div className={cn(
+                        "size-1.5 rounded-full transition-all duration-300",
+                        isActive ? "bg-accent shadow-[0_0_8px_rgba(255,255,0,0.5)]" : "bg-zinc-700"
+                      )} />
+                      <div className="flex flex-col items-start gap-0.5">
+                        <span className="text-[10px] font-black uppercase tracking-widest">{data.label}</span>
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto px-4 py-5 sm:px-6">
+            <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-5 sm:px-6">
               {messages.length === 0 ? (
                 <div className="mx-auto mt-24 max-w-lg text-center">
                   <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-xl border border-accent/30 bg-accent/10 text-sm font-bold text-accent2">
@@ -570,17 +751,32 @@ export function DashboardWorkspace({
                   {messages.map((message) => (
                     <article
                       key={message.id}
-                      className={`max-w-[80%] rounded-2xl border p-4 ${
-                        message.role === "user"
+                      className={`max-w-[80%] rounded-2xl border p-4 ${message.role === "user"
                           ? "ml-auto border-white/20 bg-white/[0.06] text-right"
                           : message.isError
                             ? "mr-auto border-rose-400/40 bg-rose-500/10"
                             : "mr-auto border-white/10 bg-black/20"
-                      }`}
+                        }`}
                     >
-                      <p className="mb-2 text-[11px] uppercase tracking-[0.12em] text-zinc-500">
-                        {message.role === "user" ? "User" : "MeasyAI"}
-                      </p>
+                      <div className="flex items-center gap-3 mb-2">
+                        <div className={cn(
+                          "size-8 rounded-full overflow-hidden border border-white/10 flex items-center justify-center shrink-0",
+                          message.role === "assistant" ? "bg-accent/20" : "bg-white/5"
+                        )}>
+                          {message.role === "user" ? (
+                            userImage ? (
+                              <img src={toProxyUrl(userImage)} alt={userName} className="size-full object-cover" />
+                            ) : (
+                              <div className="text-[10px] font-black">{userName[0]}</div>
+                            )
+                          ) : (
+                            <div className="text-[10px] font-black text-accent2">AI</div>
+                          )}
+                        </div>
+                        <p className="text-[11px] uppercase tracking-[0.12em] text-zinc-500">
+                          {message.role === "user" ? userName : "MeasyAI"}
+                        </p>
+                      </div>
                       {message.role === "user" ? (
                         <p className="whitespace-pre-wrap text-sm leading-7 text-zinc-100">{message.content}</p>
                       ) : message.isError ? (

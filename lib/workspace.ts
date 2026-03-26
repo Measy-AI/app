@@ -10,7 +10,7 @@ export function deriveConversationTitle(input: string) {
   const cleaned = input.replace(/\s+/g, " ").trim();
 
   if (!cleaned) {
-    return "New chat";
+    return "New Chat";
   }
 
   const normalized = cleaned

@@ -7,6 +7,7 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import {
   getModelConfig,
+  getCoreVariantConfig,
   getProVariantConfig,
   isModelKey,
   isProVariantKey,
@@ -51,7 +52,9 @@ export async function POST(request: Request) {
   const payload = (await request.json()) as {
     prompt?: string;
     modelKey?: string;
+    variant?: string;
     proVariant?: string;
+    conversationId?: string;
   };
 
   if (!payload.prompt?.trim()) {
@@ -59,7 +62,8 @@ export async function POST(request: Request) {
   }
 
   const modelKey: ModelKey = isModelKey(payload.modelKey) ? payload.modelKey : "core";
-  const proVariant: ProVariantKey = isProVariantKey(payload.proVariant) ? payload.proVariant : "claude";
+  const variant = payload.variant || payload.proVariant;
+  
   const [dbUser] = await db.select().from(user).where(eq(user.id, session.user.id)).limit(1);
   const workspace = await getWorkspaceState(session.user.id);
 
@@ -75,57 +79,105 @@ export async function POST(request: Request) {
   }
 
   const trimmedPrompt = payload.prompt.trim();
-  const createdConversation = await createConversation(
-    session.user.id,
-    deriveConversationTitle(trimmedPrompt),
-    modelKey,
-  );
+  let activeConversationId = payload.conversationId;
 
+  if (!activeConversationId) {
+    const created = await createConversation(
+      session.user.id,
+      deriveConversationTitle(trimmedPrompt),
+      modelKey,
+    );
+    activeConversationId = created.id;
+  }
+
+  // Insert user message
   await db.insert(message).values({
-    conversationId: createdConversation.id,
+    conversationId: activeConversationId,
     role: "user",
     content: trimmedPrompt,
     createdAt: new Date(),
   });
 
-  const modelConfig = getModelConfig(modelKey);
-  const proVariantConfig = getProVariantConfig(proVariant);
-  const selectedEngine =
-    modelKey === "pro" && dbUser?.plan === "pro" ? proVariantConfig.engine : modelConfig.engine;
-  const selectedSystemPrompt =
-    modelKey === "pro" && dbUser?.plan === "pro" ? proVariantConfig.systemPrompt : modelConfig.systemPrompt;
+  // Increment usage immediately for Pro models on Free plan
+  if (modelKey === "pro" && dbUser?.plan !== "pro") {
+    await incrementUsage(session.user.id, "pro");
+  }
+
+  // Fetch full message history for the AI
+  const history = await db
+    .select()
+    .from(message)
+    .where(eq(message.conversationId, activeConversationId))
+    .orderBy(message.createdAt);
+
+  const isPro = modelKey === "pro" && dbUser?.plan === "pro";
+  let selectedEngine: string;
+  let selectedSystemPrompt: string;
+
+  if (isPro) {
+    const config = getProVariantConfig(variant);
+    selectedEngine = config.engine;
+    selectedSystemPrompt = config.systemPrompt;
+  } else {
+    const config = getCoreVariantConfig(variant);
+    selectedEngine = config.engine;
+    selectedSystemPrompt = config.systemPrompt;
+  }
+
   const openrouter = createOpenRouterProvider();
 
   const result = await generateText({
     model: openrouter(selectedEngine),
     system: selectedSystemPrompt,
-    messages: [
-      {
-        role: "user",
-        content: trimmedPrompt,
-      },
-    ],
+    maxTokens: 4000,
+    messages: history.map((m) => ({
+      role: m.role as "user" | "assistant",
+      content: m.content || "",
+    })),
   });
 
-  await db.insert(message).values({
-    conversationId: createdConversation.id,
+  // Insert AI message
+  const assistantMsg = {
+    conversationId: activeConversationId!,
     role: "assistant",
     content: result.text,
     createdAt: new Date(),
-  });
+  };
+  await db.insert(message).values(assistantMsg);
+
+  // Final record update
+  const isNewConversation = !payload.conversationId;
+  let updatedTitle: string | null = null;
+
+  if (isNewConversation) {
+    try {
+      const { text: aiTitle } = await generateText({
+        model: openrouter("openai/gpt-4o-mini"),
+        system: "Generate a catchy, very short (max 3 words) chat title. Match the user's language (e.g. German if he peaks German). DONT use robotic phrases like 'Assistance Request' or 'User Inquiry'. Be brief and creative. No quotes.",
+        messages: [
+          { role: "user", content: trimmedPrompt },
+          { role: "assistant", content: result.text }
+        ],
+        maxTokens: 15,
+      });
+
+      if (aiTitle && aiTitle.trim().length > 2) {
+        updatedTitle = aiTitle.trim().replace(/^["']|["']$/g, '');
+      }
+    } catch (e) {
+      console.error("AI Title Gen Failure:", e);
+    }
+  }
 
   await db
     .update(conversation)
-    .set({
+    .set({ 
       updatedAt: new Date(),
+      ...(updatedTitle ? { title: updatedTitle } : {})
     })
-    .where(eq(conversation.id, createdConversation.id));
+    .where(eq(conversation.id, activeConversationId!));
 
-  if (modelKey === "pro" && dbUser?.plan !== "pro") {
-    await incrementUsage(session.user.id, "pro");
-  }
-
-  const nextWorkspace = await getWorkspaceState(session.user.id, createdConversation.id);
+  const nextWorkspace = await getWorkspaceState(session.user.id, activeConversationId);
 
   return NextResponse.json({
     conversation: nextWorkspace.activeConversation,

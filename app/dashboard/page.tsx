@@ -62,6 +62,7 @@ export default async function DashboardPage() {
       initialMessages={workspace.messages.map(toMessageClientModel)}
       initialUsage={workspace.usage}
       userName={session.user.name}
+      userImage={session.user.image}
       plan={dbUser?.plan ?? "free"}
     />
   );
