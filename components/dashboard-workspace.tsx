@@ -430,12 +430,12 @@ export function DashboardWorkspace({
 
   const removeFile = (index: number) => {
     setAttachedFiles(prev => prev.filter((_, i) => i !== index));
-  }
+  };
 
   async function submitPrompt(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (!prompt.trim()) {
+    if (!prompt.trim() && attachedFiles.length === 0) {
       return;
     }
 
@@ -445,15 +445,20 @@ export function DashboardWorkspace({
     }
 
     const content = prompt.trim();
+    const currentFiles = [...attachedFiles];
     const conversationId = activeConversation?.id;
+    
+    // Optimistic user message with uploading state
+    const userMsgPreview = content || (currentFiles.length > 0 ? `[Uploading ${currentFiles.length} files...]` : "");
     const localUserMessage: MessageItem = {
       id: `local-user-${Date.now()}`,
       role: "user",
-      content,
+      content: userMsgPreview,
       createdAt: new Date().toISOString(),
     };
 
     setPrompt("");
+    setAttachedFiles([]);
     setError(null);
     setMessages((previous) => [...previous, localUserMessage]);
     setIsThinking(true);
@@ -468,6 +473,45 @@ export function DashboardWorkspace({
 
     startTransition(async () => {
       try {
+        let attachmentUrls: string[] = [];
+        let chatId = conversationId;
+
+        // Step 1: Upload files first if any
+        if (currentFiles.length > 0) {
+          try {
+            // We need a chatId to upload. If it's a new conversation, we create it first via a dummy chat call
+            if (!chatId) {
+              const initRes = await fetch("/api/chat", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  prompt: content || "[Media]",
+                  modelKey: selectedModel,
+                  variant: selectedModel === "pro" ? proVariant : coreVariant,
+                })
+              });
+              const initData = await initRes.json();
+              if (initData.conversation?.id) {
+                chatId = initData.conversation.id;
+                setActiveConversation(initData.conversation);
+              }
+            }
+            
+            if (chatId) {
+              const uploadPromises = currentFiles.map(file => {
+                const fd = new FormData();
+                fd.append("file", file);
+                return uploadChatImage(fd, chatId!);
+              });
+              const uploaded = await Promise.all(uploadPromises);
+              attachmentUrls = uploaded.map(u => u.url);
+            }
+          } catch (e) {
+            console.error("Upload failed", e);
+          }
+        }
+
+        // Step 2: Final chat call (or first if no files)
         const response = await fetch("/api/chat", {
           method: "POST",
           headers: {
@@ -477,7 +521,8 @@ export function DashboardWorkspace({
             prompt: content,
             modelKey: selectedModel,
             variant: selectedModel === "pro" ? proVariant : coreVariant,
-            conversationId,
+            conversationId: chatId,
+            attachments: attachmentUrls.length > 0 ? attachmentUrls : undefined,
           }),
         });
 
@@ -515,16 +560,6 @@ export function DashboardWorkspace({
         if (payload.conversation?.modelKey) {
           setSelectedModel(payload.conversation.modelKey);
         }
-  }
-
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      setAttachedFiles(prev => [...prev, ...Array.from(e.target.files!)]);
-    }
-  };
-
-  const removeFile = (index: number) => {
-    setAttachedFiles(prev => prev.filter((_, i) => i !== index));
       } catch {
         const errorMessage = "Network error. Please try again.";
         setMessages((previous) => [
@@ -796,13 +831,22 @@ export function DashboardWorkspace({
                           "size-8 rounded-full overflow-hidden border border-white/10 flex items-center justify-center shrink-0",
                           message.role === "assistant" ? "bg-accent/20" : "bg-white/5"
                         )}>
-                          {message.attachments && (
+                          {message.role === "assistant" ? (
+                            <Zap className="size-4 text-accent2" />
+                          ) : (
+                            <User className="size-4 text-zinc-400" />
+                          )}
+                        </div>
+                      </div>
+
+                      {message.attachments && (
                         <div className="flex flex-wrap gap-2 mb-3">
-                          {(JSON.parse(message.attachments)as string[]).map((url, i) => (
+                          {(JSON.parse(message.attachments) as string[]).map((url, i) => (
                             <img key={i} src={toProxyUrl(url)} alt="attachment" className="max-w-[200px] max-h-[200px] rounded-lg border border-white/10 object-cover" />
                           ))}
                         </div>
                       )}
+
                       {message.isError ? (
                         <p className="whitespace-pre-wrap text-sm leading-7 text-rose-200">{message.content}</p>
                       ) : (
