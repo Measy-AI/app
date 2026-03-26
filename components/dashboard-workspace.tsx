@@ -8,6 +8,7 @@ import {
   type MouseEvent as ReactMouseEvent,
   useEffect,
   useMemo,
+  useRef,
   useState,
   useTransition,
 } from "react";
@@ -200,7 +201,7 @@ function MarkdownMessage({ content }: { content: string }) {
           h1: (props) => <h1 className="mb-4 mt-8 font-display text-2xl font-bold tracking-tight text-white" {...props} />,
           h2: (props) => <h2 className="mb-3 mt-6 font-display text-xl font-bold tracking-tight text-white" {...props} />,
           h3: (props) => <h3 className="mb-2 mt-4 font-display text-lg font-bold tracking-tight text-white" {...props} />,
-          p: (props) => <p className="mb-4 last:mb-0 text-zinc-200" {...props} />,
+          p: (props) => <div className="mb-4 last:mb-0 text-zinc-200" {...props} />,
           ul: (props) => <ul className="mb-4 list-disc space-y-2 pl-6" {...props} />,
           ol: (props) => <ol className="mb-4 list-decimal space-y-2 pl-6" {...props} />,
           li: (props) => <li className="marker:text-accent2" {...props} />,
@@ -280,6 +281,18 @@ export function DashboardWorkspace({
     y: 0,
     conversationId: null,
   });
+
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  const scrollToBottom = () => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages, isThinking, activeConversation]);
 
   const filteredConversations = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -722,7 +735,7 @@ export function DashboardWorkspace({
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto px-4 py-5 sm:px-6">
+            <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-5 sm:px-6">
               {messages.length === 0 ? (
                 <div className="mx-auto mt-24 max-w-lg text-center">
                   <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-xl border border-accent/30 bg-accent/10 text-sm font-bold text-accent2">

@@ -150,7 +150,7 @@ function LegacyMarkdownMessage({ content }: { content: string }) {
           h1: (props) => <h1 className="mb-4 mt-8 font-display text-2xl font-bold tracking-tight text-white" {...props} />,
           h2: (props) => <h2 className="mb-3 mt-6 font-display text-xl font-bold tracking-tight text-white" {...props} />,
           h3: (props) => <h3 className="mb-2 mt-4 font-display text-lg font-bold tracking-tight text-white" {...props} />,
-          p: (props) => <p className="mb-4 last:mb-0 text-zinc-200" {...props} />,
+          p: (props) => <div className="mb-4 last:mb-0 text-zinc-200" {...props} />,
           ul: (props) => <ul className="mb-4 list-disc space-y-2 pl-6" {...props} />,
           ol: (props) => <ol className="mb-4 list-decimal space-y-2 pl-6" {...props} />,
           li: (props) => <li className="marker:text-accent2" {...props} />,
@@ -436,7 +436,7 @@ export default function LegacyDashboardPage() {
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages, loading]);
+  }, [messages, loading, activeSessionId]);
 
   const scrollToBottom = () => {
     if (messagesEndRef.current) {
