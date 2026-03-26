@@ -115,7 +115,9 @@ export default function LoginPage() {
       <div className="glass w-full max-w-md rounded-2xl p-8">
         <h1 className="mb-2 font-display text-3xl font-bold">Welcome back</h1>
         <p className="mb-6 text-sm text-zinc-400">Sign in to access your MeasyAI workspace.</p>
-        <button
+        {/*
+
+                  <button
           type="button"
           onClick={onDiscordSignIn}
           disabled={isDiscordLoading || isLoading}
@@ -128,6 +130,8 @@ export default function LoginPage() {
           <span>or</span>
           <span className="h-px flex-1 bg-white/10" />
         </div>
+        
+        */}
         <form onSubmit={onSubmit} className="space-y-4">
           <input
             type="email"

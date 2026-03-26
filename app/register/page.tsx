@@ -128,7 +128,9 @@ export default function RegisterPage() {
       <div className="glass w-full max-w-md rounded-2xl p-8">
         <h1 className="mb-2 font-display text-3xl font-bold">Create account</h1>
         <p className="mb-6 text-sm text-zinc-400">Start free and upgrade whenever you are ready.</p>
-        <button
+        {/*
+
+                  <button
           type="button"
           onClick={onDiscordSignIn}
           disabled={isDiscordLoading || isLoading}
@@ -141,6 +143,8 @@ export default function RegisterPage() {
           <span>or</span>
           <span className="h-px flex-1 bg-white/10" />
         </div>
+        
+        */}
         <form onSubmit={onSubmit} className="space-y-4">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <input
