@@ -99,6 +99,7 @@ export const message = sqliteTable(
     conversationId: text("conversation_id").notNull().references(() => conversation.id, { onDelete: "cascade" }),
     role: text("role").notNull(),
     content: text("content").notNull(),
+    attachments: text("attachments"), // JSON string of file URLs
     createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull().default(sql`(unixepoch() * 1000)`),
   },
   (table) => ({

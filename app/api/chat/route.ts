@@ -55,10 +55,11 @@ export async function POST(request: Request) {
     variant?: string;
     proVariant?: string;
     conversationId?: string;
+    attachments?: string[]; // Array of file URLs
   };
 
-  if (!payload.prompt?.trim()) {
-    return NextResponse.json({ error: "prompt is required" }, { status: 400 });
+  if (!payload.prompt?.trim() && (!payload.attachments || payload.attachments.length === 0)) {
+    return NextResponse.json({ error: "prompt or attachments are required" }, { status: 400 });
   }
 
   const modelKey: ModelKey = isModelKey(payload.modelKey) ? payload.modelKey : "core";
@@ -78,13 +79,13 @@ export async function POST(request: Request) {
     );
   }
 
-  const trimmedPrompt = payload.prompt.trim();
+  const trimmedPrompt = payload.prompt?.trim() || "";
   let activeConversationId = payload.conversationId;
 
   if (!activeConversationId) {
     const created = await createConversation(
       session.user.id,
-      deriveConversationTitle(trimmedPrompt),
+      deriveConversationTitle(trimmedPrompt || "New Image Chat"),
       modelKey,
     );
     activeConversationId = created.id;
@@ -95,6 +96,7 @@ export async function POST(request: Request) {
     conversationId: activeConversationId,
     role: "user",
     content: trimmedPrompt,
+    attachments: payload.attachments ? JSON.stringify(payload.attachments) : null,
     createdAt: new Date(),
   });
 
@@ -130,10 +132,34 @@ export async function POST(request: Request) {
     model: openrouter(selectedEngine),
     system: selectedSystemPrompt,
     maxTokens: 4000,
-    messages: history.map((m) => ({
-      role: m.role as "user" | "assistant",
-      content: m.content || "",
-    })),
+    messages: history.map((m) => {
+      const role = m.role as "user" | "assistant";
+      const attachments = m.attachments ? (JSON.parse(m.attachments) as string[]) : [];
+      
+      if (role === "user") {
+        if (attachments.length > 0) {
+          return {
+            role: "user" as const,
+            content: [
+              { type: "text", text: m.content || "" },
+              ...attachments.map((url) => ({
+                type: "image" as const,
+                image: url,
+              })),
+            ],
+          };
+        }
+        return {
+          role: "user" as const,
+          content: m.content || "",
+        };
+      }
+
+      return {
+        role: "assistant" as const,
+        content: m.content || "",
+      };
+    }),
   });
 
   // Insert AI message

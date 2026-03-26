@@ -183,7 +183,7 @@ function LegacyMarkdownMessage({ content }: { content: string }) {
   );
 }
 
-function ChatMessage({ role, content, avatar, name }: { role: string; content: string; avatar?: string; name?: string }) {
+function ChatMessage({ role, content, attachments, avatar, name }: { role: string; content: string; attachments?: string; avatar?: string; name?: string }) {
   const isAssistant = role === "assistant";
 
   return (
@@ -220,11 +220,16 @@ function ChatMessage({ role, content, avatar, name }: { role: string; content: s
           </span>
         </div>
         
-        {isAssistant ? (
-          <LegacyMarkdownMessage content={content} />
-        ) : (
-          <p className="whitespace-pre-wrap text-[15px] leading-8 text-zinc-100 font-medium">{content}</p>
+        {attachments && (
+          <div className="flex flex-wrap gap-3 mb-6">
+            {(JSON.parse(attachments) as string[]).map((url, i) => (
+              <div key={i} className="relative group/img overflow-hidden rounded-2xl border border-white/5 bg-white/5 transition-all hover:border-primary/30">
+                <img src={toProxyUrl(url)} alt="Attachment" className="max-w-[300px] max-h-[300px] object-cover transition-transform duration-500 group-hover/img:scale-105" />
+              </div>
+            ))}
+          </div>
         )}
+        <LegacyMarkdownMessage content={content} />
       </div>
     </div>
   );
@@ -365,10 +370,7 @@ export default function LegacyDashboardPage() {
 
       if (sessionId) {
         if (data.messages) {
-          setMessages(data.messages.map((m: any) => ({
-            role: m.role,
-            content: m.content,
-          })));
+          setMessages(data.messages.map((m: any) => ({ role: m.role, content: m.content, attachments: m.attachments })));
         }
       } else {
         if (data.conversations) {
@@ -633,8 +635,7 @@ export default function LegacyDashboardPage() {
               messages.map((msg, i) => (
                 <div key={i} className="animate-in fade-in slide-in-from-bottom-4 duration-700 ease-out fill-mode-both">
                   <ChatMessage
-                    role={msg.role}
-                    content={msg.content}
+                    role={msg.role} content={msg.content} attachments={(msg as any).attachments}
                     avatar={msg.role === 'user' && userProfile?.image ? userProfile.image : ""}
                     name={msg.role === 'user' ? (userProfile?.name || 'Authorized User') : 'Measy Assistant'}
                   />

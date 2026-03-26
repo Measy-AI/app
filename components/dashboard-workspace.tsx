@@ -29,9 +29,14 @@ import {
   Sparkles,
   Layers,
   Copy,
-  Check
+  Check,
+  Image as ImageIcon,
+  X,
+  File as FileIcon
 } from "lucide-react";
 import Editor from "@monaco-editor/react";
+import { uploadChatImage } from "@/lib/actions/upload";
+import { toast } from "sonner";
 
 type ConversationItem = {
   id: string;
@@ -46,6 +51,7 @@ type MessageItem = {
   id: string;
   role: string;
   content: string;
+  attachments?: string; // JSON string
   createdAt: string;
   isError?: boolean;
 };
@@ -281,6 +287,8 @@ export function DashboardWorkspace({
     y: 0,
     conversationId: null,
   });
+  const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -414,6 +422,16 @@ export function DashboardWorkspace({
     }
   }
 
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      setAttachedFiles(prev => [...prev, ...Array.from(e.target.files!)]);
+    }
+  };
+
+  const removeFile = (index: number) => {
+    setAttachedFiles(prev => prev.filter((_, i) => i !== index));
+  }
+
   async function submitPrompt(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
@@ -497,6 +515,16 @@ export function DashboardWorkspace({
         if (payload.conversation?.modelKey) {
           setSelectedModel(payload.conversation.modelKey);
         }
+  }
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      setAttachedFiles(prev => [...prev, ...Array.from(e.target.files!)]);
+    }
+  };
+
+  const removeFile = (index: number) => {
+    setAttachedFiles(prev => prev.filter((_, i) => i !== index));
       } catch {
         const errorMessage = "Network error. Please try again.";
         setMessages((previous) => [
@@ -768,23 +796,14 @@ export function DashboardWorkspace({
                           "size-8 rounded-full overflow-hidden border border-white/10 flex items-center justify-center shrink-0",
                           message.role === "assistant" ? "bg-accent/20" : "bg-white/5"
                         )}>
-                          {message.role === "user" ? (
-                            userImage ? (
-                              <img src={toProxyUrl(userImage)} alt={userName} className="size-full object-cover" />
-                            ) : (
-                              <div className="text-[10px] font-black">{userName[0]}</div>
-                            )
-                          ) : (
-                            <div className="text-[10px] font-black text-accent2">AI</div>
-                          )}
+                          {message.attachments && (
+                        <div className="flex flex-wrap gap-2 mb-3">
+                          {(JSON.parse(message.attachments)as string[]).map((url, i) => (
+                            <img key={i} src={toProxyUrl(url)} alt="attachment" className="max-w-[200px] max-h-[200px] rounded-lg border border-white/10 object-cover" />
+                          ))}
                         </div>
-                        <p className="text-[11px] uppercase tracking-[0.12em] text-zinc-500">
-                          {message.role === "user" ? userName : "MeasyAI"}
-                        </p>
-                      </div>
-                      {message.role === "user" ? (
-                        <p className="whitespace-pre-wrap text-sm leading-7 text-zinc-100">{message.content}</p>
-                      ) : message.isError ? (
+                      )}
+                      {message.isError ? (
                         <p className="whitespace-pre-wrap text-sm leading-7 text-rose-200">{message.content}</p>
                       ) : (
                         <MarkdownMessage content={message.content} />
@@ -799,6 +818,26 @@ export function DashboardWorkspace({
 
             <div className="border-t border-white/10 p-4 sm:p-5">
               <form onSubmit={submitPrompt}>
+                {attachedFiles.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mb-3 px-1">
+                    {attachedFiles.map((file, i) => (
+                      <div key={i} className="relative group/file size-14 rounded-lg overflow-hidden ring-1 ring-white/10 bg-white/5 flex items-center justify-center">
+                        {file.type.startsWith('image/') ? (
+                          <img src={URL.createObjectURL(file)} alt="preview" className="size-full object-cover" />
+                        ) : (
+                          <FileIcon className="size-5 text-zinc-500" />
+                        )}
+                        <button 
+                          type="button"
+                          onClick={() => removeFile(i)} 
+                          className="absolute top-0.5 right-0.5 size-4 rounded-full bg-black/60 text-white flex items-center justify-center opacity-0 group-hover/file:opacity-100 transition-opacity hover:bg-red-500"
+                        >
+                          <X className="size-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
                 <textarea
                   value={prompt}
                   onChange={(event) => setPrompt(event.target.value)}
@@ -807,16 +846,34 @@ export function DashboardWorkspace({
                   className="mb-3 min-h-[90px] w-full resize-none rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm outline-none ring-accent transition focus:ring-2"
                 />
                 <div className="flex flex-wrap items-center justify-between gap-3">
-                  <p className="text-xs text-zinc-500">
-                    {selectedModel === "pro"
-                      ? plan === "pro"
-                        ? `Unlimited premium tier active (${PRO_VARIANTS[proVariant].label}).`
-                        : `${usage.proRemaining} premium messages left today.`
-                      : MODELS.core.caption}
-                  </p>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="file"
+                      multiple
+                      hidden
+                      ref={fileInputRef}
+                      onChange={handleFileUpload}
+                      accept="image/*"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="size-9 rounded-xl hover:bg-white/5 text-zinc-400 hover:text-accent2 flex items-center justify-center transition-colors border border-white/5"
+                      title="Attach images"
+                    >
+                      <ImageIcon className="size-4" />
+                    </button>
+                    <p className="text-xs text-zinc-500">
+                      {selectedModel === "pro"
+                        ? plan === "pro"
+                          ? `Unlimited premium tier active (${PRO_VARIANTS[proVariant].label}).`
+                          : `${usage.proRemaining} premium messages left today.`
+                        : MODELS.core.caption}
+                    </p>
+                  </div>
                   <button
                     type="submit"
-                    disabled={isPending || !prompt.trim() || (selectedModel === "pro" && proLocked)}
+                    disabled={isPending || (!prompt.trim() && attachedFiles.length === 0) || (selectedModel === "pro" && proLocked)}
                     className="rounded-xl bg-accent px-5 py-3 text-sm font-semibold text-white shadow-glow transition hover:bg-[#6aa0f8] disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {isPending ? "Sending..." : selectedModel === "pro" && proLocked ? "Upgrade required" : "Send"}
