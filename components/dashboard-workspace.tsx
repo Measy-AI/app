@@ -282,17 +282,22 @@ export function DashboardWorkspace({
     conversationId: null,
   });
 
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const scrollToBottom = () => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
+  const scrollToBottom = (behavior: ScrollBehavior = "smooth") => {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        messagesEndRef.current?.scrollIntoView({
+          behavior,
+          block: "end",
+        });
+      });
+    });
   };
 
   useEffect(() => {
-    scrollToBottom();
-  }, [messages, isThinking, activeConversation]);
+    scrollToBottom(messages.length > 0 ? "smooth" : "auto");
+  }, [messages.length, isThinking, activeConversation?.id]);
 
   const filteredConversations = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -422,6 +427,7 @@ export function DashboardWorkspace({
     }
 
     const content = prompt.trim();
+    const conversationId = activeConversation?.id;
     const localUserMessage: MessageItem = {
       id: `local-user-${Date.now()}`,
       role: "user",
@@ -431,8 +437,7 @@ export function DashboardWorkspace({
 
     setPrompt("");
     setError(null);
-    setActiveConversation(null);
-    setMessages([localUserMessage]);
+    setMessages((previous) => [...previous, localUserMessage]);
     setIsThinking(true);
 
     if (selectedModel === "pro" && plan !== "pro") {
@@ -454,7 +459,7 @@ export function DashboardWorkspace({
             prompt: content,
             modelKey: selectedModel,
             variant: selectedModel === "pro" ? proVariant : coreVariant,
-            conversationId: activeConversation?.id,
+            conversationId,
           }),
         });
 
@@ -735,7 +740,7 @@ export function DashboardWorkspace({
               </div>
             </div>
 
-            <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-5 sm:px-6">
+            <div className="flex-1 overflow-y-auto px-4 py-5 sm:px-6">
               {messages.length === 0 ? (
                 <div className="mx-auto mt-24 max-w-lg text-center">
                   <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-xl border border-accent/30 bg-accent/10 text-sm font-bold text-accent2">
@@ -747,7 +752,7 @@ export function DashboardWorkspace({
                   </p>
                 </div>
               ) : (
-                <div className="mx-auto flex w-full max-w-4xl flex-col gap-4">
+                <div className="mx-auto flex w-full max-w-4xl flex-col gap-4 pb-2">
                   {messages.map((message) => (
                     <article
                       key={message.id}
@@ -787,6 +792,7 @@ export function DashboardWorkspace({
                     </article>
                   ))}
                   {isThinking ? <ThinkingBubble /> : null}
+                  <div ref={messagesEndRef} className="h-px w-full shrink-0" />
                 </div>
               )}
             </div>
