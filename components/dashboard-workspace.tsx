@@ -26,8 +26,11 @@ import {
   LogOut,
   ChevronDown,
   Sparkles,
-  Layers
+  Layers,
+  Copy,
+  Check
 } from "lucide-react";
+import Editor from "@monaco-editor/react";
 
 type ConversationItem = {
   id: string;
@@ -105,36 +108,120 @@ const PRO_VARIANTS: Record<ProVariantKey, { label: string }> = {
   claude: { label: "Claude Sonnet 4.6" },
 };
 
+function CodeBlock({ value, language }: { value: string; language?: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const copyToClipboard = () => {
+    navigator.clipboard.writeText(value);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const lineCount = value.split("\n").length;
+  // Dynamic height capped at 600px
+  const height = Math.min(Math.max(lineCount * 22 + 45, 100), 600);
+
+  return (
+    <div className="relative group/code my-10 rounded-2xl border border-white/10 bg-[#0d0d0e] overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.5)] animate-in fade-in slide-in-from-bottom-5 duration-700">
+      {/* Visual Indicator Track */}
+      <div className="absolute left-0 top-0 bottom-0 w-1 bg-accent/20 z-10 group-hover/code:bg-accent/40 transition-colors"></div>
+      
+      {/* Editor Header */}
+      <div className="flex items-center justify-between px-6 py-3 border-b border-white/[0.03] bg-[#0d0d0e]">
+        <div className="flex items-center gap-6">
+          <div className="flex gap-1.5 opacity-60">
+            <div className="size-2.5 rounded-full bg-rose-500/80 shadow-[0_0_8px_rgba(244,63,94,0.3)]"></div>
+            <div className="size-2.5 rounded-full bg-amber-500/80 shadow-[0_0_8px_rgba(245,158,11,0.3)]"></div>
+            <div className="size-2.5 rounded-full bg-emerald-500/80 shadow-[0_0_8px_rgba(16,185,129,0.3)]"></div>
+          </div>
+          <div className="flex items-center gap-2 rounded-lg bg-white/5 border border-white/5 px-3 py-1.5 transition-colors group-hover/code:bg-white/[0.08]">
+             <span className="text-[10px] font-black uppercase tracking-[0.2em] text-accent2 underline decoration-accent/20 underline-offset-4">
+              {language || "source.md"}
+            </span>
+          </div>
+        </div>
+        <button
+          onClick={copyToClipboard}
+          className={cn(
+            "p-2 px-3 rounded-xl transition-all flex items-center gap-2 active:scale-90",
+            copied ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/20" : "bg-white/5 hover:bg-white/[0.12] text-zinc-400 hover:text-white border border-white/5"
+          )}
+        >
+          {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
+          <span className="text-[10px] font-black uppercase tracking-widest">{copied ? "Copied" : "Copy"}</span>
+        </button>
+      </div>
+
+      <div style={{ height: `${height}px` }} className="pl-1 p-2 bg-[#0d0d0e] relative">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,_#1a2a4a_0%,_transparent_100%)] opacity-10 pointer-events-none"></div>
+        <Editor
+          height="100%"
+          language={language || "markdown"}
+          value={value}
+          theme="vs-dark"
+          options={{
+            readOnly: true,
+            minimap: { enabled: false },
+            fontSize: 13,
+            lineNumbers: "on",
+            renderLineHighlight: "all",
+            scrollbar: {
+              vertical: "auto",
+              horizontal: "auto",
+              verticalScrollbarSize: 8,
+              horizontalScrollbarSize: 8,
+            },
+            fontFamily: "'JetBrains Mono', 'Menlo', 'Monaco', 'Courier New', monospace",
+            fontWeight: "500",
+            lineHeight: 22,
+            padding: { top: 20, bottom: 20 },
+            folding: true,
+            scrollBeyondLastLine: false,
+            wordWrap: "on",
+            automaticLayout: true,
+            domReadOnly: true,
+            cursorStyle: "line",
+            contextmenu: false,
+            smoothScrolling: true,
+            fixedOverflowWidgets: true,
+          }}
+        />
+      </div>
+    </div>
+  );
+}
+
 function MarkdownMessage({ content }: { content: string }) {
   return (
-    <div className="text-sm leading-7 text-zinc-100">
+    <div className="text-sm leading-8 text-zinc-100">
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{
-          h1: (props) => <h1 className="mb-3 mt-5 font-display text-2xl font-bold tracking-tight" {...props} />,
-          h2: (props) => <h2 className="mb-3 mt-5 font-display text-xl font-bold tracking-tight" {...props} />,
-          h3: (props) => <h3 className="mb-2 mt-4 font-display text-lg font-bold tracking-tight" {...props} />,
-          p: (props) => <p className="mb-3 last:mb-0 text-zinc-200" {...props} />,
-          ul: (props) => <ul className="mb-3 list-disc space-y-2 pl-5" {...props} />,
-          ol: (props) => <ol className="mb-3 list-decimal space-y-2 pl-5" {...props} />,
+          h1: (props) => <h1 className="mb-4 mt-8 font-display text-2xl font-bold tracking-tight text-white" {...props} />,
+          h2: (props) => <h2 className="mb-3 mt-6 font-display text-xl font-bold tracking-tight text-white" {...props} />,
+          h3: (props) => <h3 className="mb-2 mt-4 font-display text-lg font-bold tracking-tight text-white" {...props} />,
+          p: (props) => <p className="mb-4 last:mb-0 text-zinc-200" {...props} />,
+          ul: (props) => <ul className="mb-4 list-disc space-y-2 pl-6" {...props} />,
+          ol: (props) => <ol className="mb-4 list-decimal space-y-2 pl-6" {...props} />,
           li: (props) => <li className="marker:text-accent2" {...props} />,
-          code: ({ inline, className, children, ...props }: MarkdownCodeProps) =>
-            inline ? (
-              <code className="rounded bg-white/10 px-1.5 py-0.5 text-[0.9em] text-accent2" {...props}>
+          code: ({ inline, className, children, ...props }: MarkdownCodeProps) => {
+            const match = /language-(\w+)/.exec(className || "");
+            const lang = match ? match[1] : undefined;
+            const codeString = String(children).replace(/\n$/, "");
+
+            return inline ? (
+              <code className="rounded bg-white/10 px-1.5 py-0.5 text-[0.9em] text-accent2 font-mono" {...props}>
                 {children}
               </code>
             ) : (
-              <code className={className} {...props}>
-                {children}
-              </code>
-            ),
-          pre: (props) => (
-            <pre className="mb-3 overflow-x-auto rounded-2xl border border-white/10 bg-black/40 p-4 text-xs" {...props} />
-          ),
+              <CodeBlock value={codeString} language={lang} />
+            );
+          },
+          pre: ({ children }) => <>{children}</>,
           blockquote: (props) => (
-            <blockquote className="mb-3 border-l-2 border-accent/50 pl-4 text-zinc-300" {...props} />
+            <blockquote className="my-4 border-l-2 border-accent/50 pl-4 text-zinc-300 italic" {...props} />
           ),
-          a: (props) => <a className="text-accent2 underline decoration-accent/40 underline-offset-4" {...props} />,
+          a: (props) => <a className="text-accent2 underline decoration-accent/40 underline-offset-4 hover:decoration-accent2 transition-all" {...props} />,
         }}
       >
         {content}
@@ -334,6 +421,14 @@ export function DashboardWorkspace({
     setActiveConversation(null);
     setMessages([localUserMessage]);
     setIsThinking(true);
+
+    if (selectedModel === "pro" && plan !== "pro") {
+      setUsage((prev) => ({
+        ...prev,
+        proUsed: Math.min(prev.proLimit, prev.proUsed + 1),
+        proRemaining: Math.max(0, prev.proRemaining - 1),
+      }));
+    }
 
     startTransition(async () => {
       try {

@@ -17,12 +17,15 @@ import {
   MessageSquare,
   Trash2,
   ChevronDown,
-  Layers
+  Layers,
+  Copy,
+  Check
 } from "lucide-react";
 import Link from "next/link";
 import { authClient } from "@/lib/auth-client";
 import { cn, toProxyUrl } from "@/lib/utils";
 import ReactMarkdown from "react-markdown";
+import Editor from "@monaco-editor/react";
 import { uploadChatImage } from "@/lib/actions/upload";
 import { toast } from "sonner";
 import remarkGfm from "remark-gfm";
@@ -55,50 +58,173 @@ const t = {
 
 // --- Components ---
 
+function CodeBlock({ value, language }: { value: string; language?: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const copyToClipboard = () => {
+    navigator.clipboard.writeText(value);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const lineCount = value.split("\n").length;
+  // Dynamic height capped at 600px
+  const height = Math.min(Math.max(lineCount * 22 + 45, 100), 600);
+
+  return (
+    <div className="relative group/code my-10 rounded-2xl border border-white/10 bg-[#0d0d0e] overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.5)] animate-in fade-in slide-in-from-bottom-5 duration-700">
+      {/* Visual Indicator Track */}
+      <div className="absolute left-0 top-0 bottom-0 w-1 bg-accent/20 z-10 group-hover/code:bg-accent/40 transition-colors"></div>
+      
+      {/* Editor Header */}
+      <div className="flex items-center justify-between px-6 py-3 border-b border-white/[0.03] bg-[#0d0d0e]">
+        <div className="flex items-center gap-6">
+          <div className="flex gap-1.5 opacity-60">
+            <div className="size-2.5 rounded-full bg-rose-500/80 shadow-[0_0_8px_rgba(244,63,94,0.3)]"></div>
+            <div className="size-2.5 rounded-full bg-amber-500/80 shadow-[0_0_8px_rgba(245,158,11,0.3)]"></div>
+            <div className="size-2.5 rounded-full bg-emerald-500/80 shadow-[0_0_8px_rgba(16,185,129,0.3)]"></div>
+          </div>
+          <div className="flex items-center gap-2 rounded-lg bg-white/5 border border-white/5 px-3 py-1.5 transition-colors group-hover/code:bg-white/[0.08]">
+             <span className="text-[10px] font-black uppercase tracking-[0.2em] text-accent2 underline decoration-accent/20 underline-offset-4">
+              {language || "source.md"}
+            </span>
+          </div>
+        </div>
+        <button
+          onClick={copyToClipboard}
+          className={cn(
+            "p-2 px-3 rounded-xl transition-all flex items-center gap-2 active:scale-90",
+            copied ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/20" : "bg-white/5 hover:bg-white/[0.12] text-zinc-400 hover:text-white border border-white/5"
+          )}
+        >
+          {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
+          <span className="text-[10px] font-black uppercase tracking-widest">{copied ? "Copied" : "Copy"}</span>
+        </button>
+      </div>
+
+      <div style={{ height: `${height}px` }} className="pl-1 p-2 bg-[#0d0d0e] relative">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,_#1a2a4a_0%,_transparent_100%)] opacity-10 pointer-events-none"></div>
+        <Editor
+          height="100%"
+          language={language || "markdown"}
+          value={value}
+          theme="vs-dark"
+          options={{
+            readOnly: true,
+            minimap: { enabled: false },
+            fontSize: 13,
+            lineNumbers: "on",
+            renderLineHighlight: "all",
+            scrollbar: {
+              vertical: "auto",
+              horizontal: "auto",
+              verticalScrollbarSize: 8,
+              horizontalScrollbarSize: 8,
+            },
+            fontFamily: "'JetBrains Mono', 'Menlo', 'Monaco', 'Courier New', monospace",
+            fontWeight: "500",
+            lineHeight: 22,
+            padding: { top: 20, bottom: 20 },
+            folding: true,
+            scrollBeyondLastLine: false,
+            wordWrap: "on",
+            automaticLayout: true,
+            domReadOnly: true,
+            cursorStyle: "line",
+            contextmenu: false,
+            smoothScrolling: true,
+            fixedOverflowWidgets: true,
+          }}
+        />
+      </div>
+    </div>
+  );
+}
+
+function LegacyMarkdownMessage({ content }: { content: string }) {
+  return (
+    <div className="text-sm leading-8 text-zinc-200">
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        components={{
+          h1: (props) => <h1 className="mb-4 mt-8 font-display text-2xl font-bold tracking-tight text-white" {...props} />,
+          h2: (props) => <h2 className="mb-3 mt-6 font-display text-xl font-bold tracking-tight text-white" {...props} />,
+          h3: (props) => <h3 className="mb-2 mt-4 font-display text-lg font-bold tracking-tight text-white" {...props} />,
+          p: (props) => <p className="mb-4 last:mb-0 text-zinc-200" {...props} />,
+          ul: (props) => <ul className="mb-4 list-disc space-y-2 pl-6" {...props} />,
+          ol: (props) => <ol className="mb-4 list-decimal space-y-2 pl-6" {...props} />,
+          li: (props) => <li className="marker:text-accent2" {...props} />,
+          code: ({ inline, className, children, ...props }: any) => {
+            const match = /language-(\w+)/.exec(className || "");
+            const lang = match ? match[1] : undefined;
+            const codeString = String(children).replace(/\n$/, "");
+
+            return inline ? (
+              <code className="rounded bg-white/10 px-1.5 py-0.5 text-[0.9em] text-accent2 font-mono" {...props}>
+                {children}
+              </code>
+            ) : (
+              <CodeBlock value={codeString} language={lang} />
+            );
+          },
+          pre: ({ children }) => <>{children}</>,
+          blockquote: (props) => (
+            <blockquote className="my-4 border-l-2 border-accent/50 pl-4 text-zinc-300 italic" {...props} />
+          ),
+          a: (props) => <a className="text-accent2 underline decoration-accent/40 underline-offset-4 hover:decoration-accent2 transition-all" {...props} />,
+          table: (props) => <div className="mb-6 overflow-x-auto rounded-2xl border border-white/10"><table className="w-full text-left" {...props} /></div>,
+          th: (props) => <th className="bg-white/5 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-zinc-400 border-b border-white/10" {...props} />,
+          td: (props) => <td className="px-4 py-3 text-sm border-b border-white/5" {...props} />,
+        }}
+      >
+        {content || ""}
+      </ReactMarkdown>
+    </div>
+  );
+}
+
 function ChatMessage({ role, content, avatar, name }: { role: string; content: string; avatar?: string; name?: string }) {
   const isAssistant = role === "assistant";
 
   return (
     <div className={cn(
-      "flex w-full gap-4 px-4 py-8 transition-all group",
-      isAssistant ? "bg-white/[0.02]" : "bg-transparent"
+      "flex w-full gap-5 px-6 py-10 transition-all group border-b border-white/[0.03]",
+      isAssistant ? "bg-white/[0.01]" : "bg-transparent"
     )}>
-      <div className="flex flex-col items-center gap-2">
+      <div className="flex flex-col items-center gap-2 pt-1">
         <div className={cn(
-          "size-10 rounded-2xl flex items-center justify-center border transition-all ring-offset-black group-hover:ring-2",
+          "size-12 rounded-2xl flex items-center justify-center border transition-all ring-offset-black group-hover:ring-4",
           isAssistant
-            ? "bg-primary/20 border-primary/40 text-primary ring-primary/20"
-            : "bg-zinc-800/50 border-white/5 text-zinc-400 ring-white/10"
+            ? "bg-primary/10 border-primary/30 text-primary ring-primary/10 shadow-[0_0_20px_rgba(0,112,243,0.1)]"
+            : "bg-zinc-900 border-white/5 text-zinc-500 ring-white/5"
         )}>
           {avatar ? (
             <img src={toProxyUrl(avatar)} alt="Avatar" className="size-full rounded-2xl object-cover" />
           ) : (
-            isAssistant ? <Cpu className="size-5" /> : <div className="text-xs font-black">USER</div>
+            isAssistant ? <Cpu className="size-6 animate-in zoom-in-50 duration-500" /> : <div className="text-[10px] font-black tracking-tighter">USER</div>
           )}
         </div>
       </div>
 
-      <div className="flex-1 space-y-2">
-        <div className="flex items-center gap-2">
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-3 mb-4">
           <span className={cn(
-            "text-[10px] font-black uppercase tracking-[0.2em]",
+            "text-[10px] font-black uppercase tracking-[0.3em]",
             isAssistant ? "text-primary" : "text-zinc-500"
           )}>
-            {isAssistant ? "Measy Assistant" : (name || "Authorized User")}
+            {isAssistant ? "MEASY ASSISTANT" : (name || "AUTHORIZED USER")}
           </span>
-          <span className="text-[8px] text-white/10 uppercase tracking-widest">
+          <div className="h-1px w-4 bg-white/5"></div>
+          <span className="text-[8px] text-white/5 font-black uppercase tracking-[0.4em]">
             {new Date().toLocaleTimeString()}
           </span>
         </div>
-        <div className="text-sm leading-7 text-zinc-100/90 font-medium">
-          {isAssistant ? (
-            <div className="prose prose-invert prose-sm max-w-none">
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
-            </div>
-          ) : (
-            <p className="whitespace-pre-wrap">{content}</p>
-          )}
-        </div>
+        
+        {isAssistant ? (
+          <LegacyMarkdownMessage content={content} />
+        ) : (
+          <p className="whitespace-pre-wrap text-[15px] leading-8 text-zinc-100 font-medium">{content}</p>
+        )}
       </div>
     </div>
   );
@@ -329,6 +455,14 @@ export default function LegacyDashboardPage() {
 
     const userMsgPreview = currentInput || (currentFiles.length > 0 ? `[Uploading ${currentFiles.length} files...]` : "");
     setMessages(prev => [...prev, { role: "user", content: userMsgPreview }]);
+
+    if (selectedModel === "pro" && plan !== "pro") {
+      setUsage((prev) => ({
+        ...prev,
+        proUsed: Math.min(prev.proLimit, prev.proUsed + 1),
+        proRemaining: Math.max(0, prev.proRemaining - 1),
+      }));
+    }
 
     try {
       // Step 1: Initial chat call to ensure we have a conversationId if it's new

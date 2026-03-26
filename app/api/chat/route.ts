@@ -98,6 +98,11 @@ export async function POST(request: Request) {
     createdAt: new Date(),
   });
 
+  // Increment usage immediately for Pro models on Free plan
+  if (modelKey === "pro" && dbUser?.plan !== "pro") {
+    await incrementUsage(session.user.id, "pro");
+  }
+
   // Fetch full message history for the AI
   const history = await db
     .select()
@@ -171,10 +176,6 @@ export async function POST(request: Request) {
       ...(updatedTitle ? { title: updatedTitle } : {})
     })
     .where(eq(conversation.id, activeConversationId!));
-
-  if (modelKey === "pro" && dbUser?.plan !== "pro") {
-    await incrementUsage(session.user.id, "pro");
-  }
 
   const nextWorkspace = await getWorkspaceState(session.user.id, activeConversationId);
 
