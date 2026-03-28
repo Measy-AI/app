@@ -1,4 +1,4 @@
-# MeasyAI Next.js App
+# MeasyAI Next.js App (Mäisi EY EI)
 
 Production-ready Next.js App Router starter built from your landing page with:
 
