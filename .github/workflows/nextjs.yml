@@ -25,4 +25,4 @@ jobs:
         run: bun run build
 
       - name: Run App
-        run: bun run start
+        run: bun run start --port 6767
