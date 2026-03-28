@@ -16,13 +16,13 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { cn, toProxyUrl } from "@/lib/utils";
 import { SignOutButton } from "@/components/sign-out-button";
-import { 
-  Zap, 
-  History, 
-  PlusSquare, 
-  Trash2, 
-  User, 
-  Settings, 
+import {
+  Zap,
+  History,
+  PlusSquare,
+  Trash2,
+  User,
+  Settings,
   CreditCard,
   LogOut,
   ChevronDown,
@@ -132,7 +132,7 @@ function CodeBlock({ value, language }: { value: string; language?: string }) {
     <div className="relative group/code my-10 rounded-2xl border border-white/10 bg-[#0d0d0e] overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.5)] animate-in fade-in slide-in-from-bottom-5 duration-700">
       {/* Visual Indicator Track */}
       <div className="absolute left-0 top-0 bottom-0 w-1 bg-accent/20 z-10 group-hover/code:bg-accent/40 transition-colors"></div>
-      
+
       {/* Editor Header */}
       <div className="flex items-center justify-between px-6 py-3 border-b border-white/[0.03] bg-[#0d0d0e]">
         <div className="flex items-center gap-6">
@@ -142,7 +142,7 @@ function CodeBlock({ value, language }: { value: string; language?: string }) {
             <div className="size-2.5 rounded-full bg-emerald-500/80 shadow-[0_0_8px_rgba(16,185,129,0.3)]"></div>
           </div>
           <div className="flex items-center gap-2 rounded-lg bg-white/5 border border-white/5 px-3 py-1.5 transition-colors group-hover/code:bg-white/[0.08]">
-             <span className="text-[10px] font-black uppercase tracking-[0.2em] text-accent2 underline decoration-accent/20 underline-offset-4">
+            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-accent2 underline decoration-accent/20 underline-offset-4">
               {language || "source.md"}
             </span>
           </div>
@@ -447,7 +447,7 @@ export function DashboardWorkspace({
     const content = prompt.trim();
     const currentFiles = [...attachedFiles];
     const conversationId = activeConversation?.id;
-    
+
     // Optimistic user message with uploading state
     const userMsgPreview = content || (currentFiles.length > 0 ? `[Uploading ${currentFiles.length} files...]` : "");
     const localUserMessage: MessageItem = {
@@ -496,7 +496,7 @@ export function DashboardWorkspace({
                 setActiveConversation(initData.conversation);
               }
             }
-            
+
             if (chatId) {
               const uploadPromises = currentFiles.map(file => {
                 const fd = new FormData();
@@ -614,16 +614,16 @@ export function DashboardWorkspace({
           </div>
 
           <div className="flex items-center gap-1.5 sm:gap-3">
-            <Link 
-              href="/dashboard/lagacy" 
+            <Link
+              href="/dashboard/lagacy"
               className="hidden md:flex items-center gap-2 h-9 px-4 rounded-xl text-[11px] font-black uppercase tracking-widest text-zinc-400 hover:text-white hover:bg-white/5 border border-transparent hover:border-white/5 transition-all"
             >
               <History className="size-3.5" />
               Legacy Mode
             </Link>
-            
-            <Link 
-              href="/buy" 
+
+            <Link
+              href="/buy"
               className="hidden sm:flex items-center gap-2 h-9 px-4 rounded-xl text-[11px] font-black uppercase tracking-widest text-zinc-400 hover:text-primary hover:bg-primary/10 border border-transparent hover:border-primary/20 transition-all"
             >
               <CreditCard className="size-3.5" />
@@ -634,8 +634,8 @@ export function DashboardWorkspace({
 
             <div className={cn(
               "flex items-center h-8 px-3 rounded-lg text-[10px] font-black uppercase tracking-[0.2em] border shadow-inner",
-              plan === "pro" 
-                ? "bg-accent/10 border-accent/20 text-accent shadow-[0_0_15px_rgba(var(--accent-rgb),0.1)]" 
+              plan === "pro"
+                ? "bg-accent/10 border-accent/20 text-accent shadow-[0_0_15px_rgba(var(--accent-rgb),0.1)]"
                 : "bg-white/5 border-white/10 text-zinc-400"
             )}>
               {plan === "pro" ? <Zap className="size-3 mr-1.5 fill-accent/20" /> : null}
@@ -651,7 +651,7 @@ export function DashboardWorkspace({
                   <div className="bg-primary/20 text-primary font-black uppercase text-sm size-full flex items-center justify-center rounded-lg">
                     {userName[0]}
                   </div>
-                ) }
+                )}
               </div>
             </Link>
 
@@ -693,8 +693,8 @@ export function DashboardWorkspace({
                   <div
                     key={conversation.id}
                     className={`w-full rounded-xl border p-3 text-left transition ${isActive
-                        ? "border-accent/40 bg-accent/10"
-                        : "border-white/10 bg-white/[0.02] hover:bg-white/[0.05]"
+                      ? "border-accent/40 bg-accent/10"
+                      : "border-white/10 bg-white/[0.02] hover:bg-white/[0.05]"
                       }`}
                     onContextMenu={(event) => openConversationMenu(event, conversation.id)}
                   >
@@ -710,8 +710,8 @@ export function DashboardWorkspace({
                       <div className="flex items-center gap-1">
                         <span
                           className={`rounded-md px-2 py-0.5 text-[10px] uppercase tracking-[0.14em] ${conversation.modelKey === "pro"
-                              ? "border border-accent/30 bg-accent/10 text-accent2"
-                              : "border border-white/10 bg-white/[0.03] text-zinc-400"
+                            ? "border border-accent/30 bg-accent/10 text-accent2"
+                            : "border border-white/10 bg-white/[0.03] text-zinc-400"
                             }`}
                         >
                           {conversation.modelKey}
@@ -766,8 +766,8 @@ export function DashboardWorkspace({
                         onClick={() => setSelectedModel(modelKey)}
                         disabled={isDisabled}
                         className={`rounded-lg border px-3 py-2 text-xs font-medium transition ${isSelected
-                            ? "border-accent/50 bg-accent/15 text-accent2"
-                            : "border-white/10 bg-white/[0.03] text-zinc-300 hover:bg-white/[0.06]"
+                          ? "border-accent/50 bg-accent/15 text-accent2"
+                          : "border-white/10 bg-white/[0.03] text-zinc-300 hover:bg-white/[0.06]"
                           } disabled:cursor-not-allowed disabled:opacity-40`}
                       >
                         {MODELS[modelKey].label}
@@ -820,10 +820,10 @@ export function DashboardWorkspace({
                     <article
                       key={message.id}
                       className={`max-w-[80%] rounded-2xl border p-4 ${message.role === "user"
-                          ? "ml-auto border-white/20 bg-white/[0.06] text-right"
-                          : message.isError
-                            ? "mr-auto border-rose-400/40 bg-rose-500/10"
-                            : "mr-auto border-white/10 bg-black/20"
+                        ? "ml-auto border-white/20 bg-white/[0.06] text-right"
+                        : message.isError
+                          ? "mr-auto border-rose-400/40 bg-rose-500/10"
+                          : "mr-auto border-white/10 bg-black/20"
                         }`}
                     >
                       <div className="flex items-center gap-3 mb-2">
@@ -871,9 +871,9 @@ export function DashboardWorkspace({
                         ) : (
                           <FileIcon className="size-5 text-zinc-500" />
                         )}
-                        <button 
+                        <button
                           type="button"
-                          onClick={() => removeFile(i)} 
+                          onClick={() => removeFile(i)}
                           className="absolute top-0.5 right-0.5 size-4 rounded-full bg-black/60 text-white flex items-center justify-center opacity-0 group-hover/file:opacity-100 transition-opacity hover:bg-red-500"
                         >
                           <X className="size-3" />
