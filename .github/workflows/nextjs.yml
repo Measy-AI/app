@@ -42,9 +42,3 @@ jobs:
 
       - name: Setup PM2 startup
         run: pm2 startup || true
-
-      - name: Check app status
-        run: |
-          sleep 2
-          pm2 list
-          pm2 logs next-app --lines 20
