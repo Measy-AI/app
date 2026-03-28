@@ -23,6 +23,3 @@ jobs:
 
       - name: Build Next.js app
         run: bun run build
-
-      - name: Restart measyai service
-        run: sudo systemctl restart measyai
