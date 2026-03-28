@@ -1,5 +1,4 @@
 name: Build & Deploy Next.js (Self-Hosted)
-
 on:
   push:
     branches: ["main"]
@@ -8,31 +7,44 @@ on:
 jobs:
   deploy:
     runs-on: self-hosted
-
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "20"
-    
-      - name: Checkout
-        uses: actions/checkout@v4
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v1
         with:
           bun-version: latest
-      - name: Add pm2
+
+      - name: Install PM2 globally
         run: bun -g install pm2
-      
+
       - name: Install dependencies
-        run: bun install
+        uses: run: bun install
 
       - name: Build Next.js app
         run: bun run build
 
-      - name: Restart app with PM2
+      - name: Stop old PM2 process
+        run: pm2 delete next-app || true
+        continue-on-error: true
+
+      - name: Start app with PM2
+        run: pm2 start "bun run start --port 6767" --name next-app
+
+      - name: Save PM2 process list
+        run: pm2 save
+
+      - name: Setup PM2 startup
+        run: pm2 startup || true
+
+      - name: Check app status
         run: |
-          pm2 delete next-app || true
-          pm2 start "bun run start --port 6767" --name next-app
-          pm2 save
+          sleep 2
+          pm2 list
+          pm2 logs next-app --lines 20
