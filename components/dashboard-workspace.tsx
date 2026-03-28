@@ -105,14 +105,14 @@ const MODELS = {
 } as const;
 
 const CORE_VARIANTS: Record<CoreVariantKey, { label: string }> = {
-  gemini: { label: "Gemini 3 Flash" },
-  gpt: { label: "ChatGPT 5 Mini" },
+  gemini: { label: "The fast one" },
+  gpt: { label: "The smart one" },
 };
 
 const PRO_VARIANTS: Record<ProVariantKey, { label: string }> = {
-  gemini: { label: "Gemini 3.1 Pro" },
-  gpt: { label: "ChatGPT 5.4" },
-  claude: { label: "Claude Sonnet 4.6" },
+  gemini: { label: "The fast & smart one" },
+  gpt: { label: "The all arounder" },
+  claude: { label: "The one who codes" },
 };
 
 function CodeBlock({ value, language }: { value: string; language?: string }) {
