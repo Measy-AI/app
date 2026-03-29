@@ -125,12 +125,12 @@ export default async function HomePage() {
             ["15k+", "Developers", <Globe key="3" className="h-4 w-4 text-emerald-400" />],
             ["<180ms", "TTFB Latency", <Rocket key="4" className="h-4 w-4 text-accent" />],
           ].map(([num, label, icon]) => (
-            <div key={label} className="group text-center sm:text-left">
+            <div key={label as string} className="group text-center sm:text-left">
               <div className="flex items-center justify-center sm:justify-start gap-2 mb-2">
                  {icon}
-                 <p className="text-[10px] uppercase tracking-widest text-zinc-500 font-bold">{label}</p>
+                 <p className="text-[10px] uppercase tracking-widest text-zinc-500 font-bold">{label as string}</p>
               </div>
-              <p className="font-display text-4xl font-black tracking-tighter text-white group-hover:text-accent transition-colors">{num}</p>
+              <p className="font-display text-4xl font-black tracking-tighter text-white group-hover:text-accent transition-colors">{num as string}</p>
             </div>
           ))}
         </div>
