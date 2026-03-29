@@ -39,176 +39,188 @@ function createOpenRouterProvider() {
 }
 
 export async function POST(request: Request) {
-  const session = await auth.api.getSession({ headers: await headers() });
+  try {
+    const session = await auth.api.getSession({ headers: await headers() });
 
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
-  if (!process.env.OPENROUTER_API_KEY) {
-    return NextResponse.json({ error: "OPENROUTER_API_KEY is missing" }, { status: 500 });
-  }
+    if (!process.env.OPENROUTER_API_KEY) {
+      return NextResponse.json({ error: "OPENROUTER_API_KEY is missing" }, { status: 500 });
+    }
 
-  const payload = (await request.json()) as {
-    prompt?: string;
-    modelKey?: string;
-    variant?: string;
-    proVariant?: string;
-    conversationId?: string;
-    attachments?: string[]; // Array of file URLs
-  };
+    const payload = (await request.json()) as {
+      prompt?: string;
+      modelKey?: string;
+      variant?: string;
+      proVariant?: string;
+      conversationId?: string;
+      attachments?: string[]; // Array of file URLs
+    };
 
-  if (!payload.prompt?.trim() && (!payload.attachments || payload.attachments.length === 0)) {
-    return NextResponse.json({ error: "prompt or attachments are required" }, { status: 400 });
-  }
+    if (!payload.prompt?.trim() && (!payload.attachments || payload.attachments.length === 0)) {
+      return NextResponse.json({ error: "prompt or attachments are required" }, { status: 400 });
+    }
 
-  const modelKey: ModelKey = isModelKey(payload.modelKey) ? payload.modelKey : "core";
-  const variant = payload.variant || payload.proVariant;
-  
-  const [dbUser] = await db.select().from(user).where(eq(user.id, session.user.id)).limit(1);
-  const workspace = await getWorkspaceState(session.user.id);
+    const modelKey: ModelKey = isModelKey(payload.modelKey) ? payload.modelKey : "core";
+    const variant = payload.variant || payload.proVariant;
 
-  if (modelKey === "pro" && dbUser?.plan !== "pro" && workspace.usage.proRemaining <= 0) {
-    return NextResponse.json(
-      {
-        error: "Daily Pro limit reached. Upgrade to unlock more premium chats.",
-        upgradeRequired: true,
-        usage: workspace.usage,
-      },
-      { status: 402 },
-    );
-  }
+    const [dbUser] = await db.select().from(user).where(eq(user.id, session.user.id)).limit(1);
+    const workspace = await getWorkspaceState(session.user.id);
 
-  const trimmedPrompt = payload.prompt?.trim() || "";
-  let activeConversationId = payload.conversationId;
+    if (modelKey === "pro" && dbUser?.plan !== "pro" && workspace.usage.proRemaining <= 0) {
+      return NextResponse.json(
+        {
+          error: "Daily Pro limit reached. Upgrade to unlock more premium chats.",
+          upgradeRequired: true,
+          usage: workspace.usage,
+        },
+        { status: 402 },
+      );
+    }
 
-  if (!activeConversationId) {
-    const created = await createConversation(
-      session.user.id,
-      deriveConversationTitle(trimmedPrompt || "New Image Chat"),
-      modelKey,
-    );
-    activeConversationId = created.id;
-  }
+    const trimmedPrompt = payload.prompt?.trim() || "";
+    let activeConversationId = payload.conversationId;
 
-  // Insert user message
-  await db.insert(message).values({
-    conversationId: activeConversationId,
-    role: "user",
-    content: trimmedPrompt,
-    attachments: payload.attachments ? JSON.stringify(payload.attachments) : null,
-    createdAt: new Date(),
-  });
+    if (!activeConversationId) {
+      const created = await createConversation(
+        session.user.id,
+        deriveConversationTitle(trimmedPrompt || "New Image Chat"),
+        modelKey,
+      );
+      activeConversationId = created.id;
+    }
 
-  // Increment usage immediately for Pro models on Free plan
-  if (modelKey === "pro" && dbUser?.plan !== "pro") {
-    await incrementUsage(session.user.id, "pro");
-  }
+    // Insert user message
+    await db.insert(message).values({
+      conversationId: activeConversationId,
+      role: "user",
+      content: trimmedPrompt,
+      attachments: payload.attachments ? JSON.stringify(payload.attachments) : null,
+      createdAt: new Date(),
+    });
 
-  // Fetch full message history for the AI
-  const history = await db
-    .select()
-    .from(message)
-    .where(eq(message.conversationId, activeConversationId))
-    .orderBy(message.createdAt);
+    // Increment usage immediately for Pro models on Free plan
+    if (modelKey === "pro" && dbUser?.plan !== "pro") {
+      await incrementUsage(session.user.id, "pro");
+    }
 
-  const isPro = modelKey === "pro" && dbUser?.plan === "pro";
-  let selectedEngine: string;
-  let selectedSystemPrompt: string;
+    // Fetch full message history for the AI
+    const history = await db
+      .select()
+      .from(message)
+      .where(eq(message.conversationId, activeConversationId))
+      .orderBy(message.createdAt);
 
-  if (isPro) {
-    const config = getProVariantConfig(variant);
-    selectedEngine = config.engine;
-    selectedSystemPrompt = config.systemPrompt;
-  } else {
-    const config = getCoreVariantConfig(variant);
-    selectedEngine = config.engine;
-    selectedSystemPrompt = config.systemPrompt;
-  }
+    const isPro = modelKey === "pro" && dbUser?.plan === "pro";
+    let selectedEngine: string;
+    let selectedSystemPrompt: string;
 
-  const openrouter = createOpenRouterProvider();
+    if (isPro) {
+      const config = getProVariantConfig(variant);
+      selectedEngine = config.engine;
+      selectedSystemPrompt = config.systemPrompt;
+    } else {
+      const config = getCoreVariantConfig(variant);
+      selectedEngine = config.engine;
+      selectedSystemPrompt = config.systemPrompt;
+    }
 
-  const result = await generateText({
-    model: openrouter(selectedEngine),
-    system: selectedSystemPrompt,
-    maxTokens: 4000,
-    messages: history.map((m) => {
-      const role = m.role as "user" | "assistant";
-      const attachments = m.attachments ? (JSON.parse(m.attachments) as string[]) : [];
-      
-      if (role === "user") {
-        if (attachments.length > 0) {
+    const openrouter = createOpenRouterProvider();
+
+    const result = await generateText({
+      model: openrouter(selectedEngine),
+      system: selectedSystemPrompt,
+      maxTokens: 40000000,
+      messages: history.map((m) => {
+        const role = m.role as "user" | "assistant";
+        const attachments = m.attachments ? (JSON.parse(m.attachments) as string[]) : [];
+
+        if (role === "user") {
+          if (attachments.length > 0) {
+            return {
+              role: "user" as const,
+              content: [
+                { type: "text", text: m.content || "" },
+                ...attachments.map((url) => ({
+                  type: "image" as const,
+                  image: url,
+                })),
+              ],
+            };
+          }
           return {
             role: "user" as const,
-            content: [
-              { type: "text", text: m.content || "" },
-              ...attachments.map((url) => ({
-                type: "image" as const,
-                image: url,
-              })),
-            ],
+            content: m.content || "",
           };
         }
+
         return {
-          role: "user" as const,
+          role: "assistant" as const,
           content: m.content || "",
         };
-      }
+      }),
+    });
 
-      return {
-        role: "assistant" as const,
-        content: m.content || "",
-      };
-    }),
-  });
-
-  // Insert AI message
-  const assistantMsg = {
-    conversationId: activeConversationId!,
-    role: "assistant",
-    content: result.text,
-    createdAt: new Date(),
-  };
-  await db.insert(message).values(assistantMsg);
-
-  // Final record update
-  const isNewConversation = !payload.conversationId;
-  let updatedTitle: string | null = null;
-
-  if (isNewConversation) {
-    try {
-      const { text: aiTitle } = await generateText({
-        model: openrouter("openai/gpt-4o-mini"),
-        system: "Generate a catchy, very short (max 3 words) chat title. Match the user's language (e.g. German if he peaks German). DONT use robotic phrases like 'Assistance Request' or 'User Inquiry'. Be brief and creative. No quotes.",
-        messages: [
-          { role: "user", content: trimmedPrompt },
-          { role: "assistant", content: result.text }
-        ],
-        maxTokens: 15,
-      });
-
-      if (aiTitle && aiTitle.trim().length > 2) {
-        updatedTitle = aiTitle.trim().replace(/^["']|["']$/g, '');
-      }
-    } catch (e) {
-      console.error("AI Title Gen Failure:", e);
+    if (!result.text) {
+      throw new Error("AI returned empty response");
     }
+
+    // Insert AI message
+    const assistantMsg = {
+      conversationId: activeConversationId!,
+      role: "assistant",
+      content: result.text,
+      createdAt: new Date(),
+    };
+    await db.insert(message).values(assistantMsg);
+
+    // Final record update
+    const isNewConversation = !payload.conversationId;
+    let updatedTitle: string | null = null;
+
+    if (isNewConversation) {
+      try {
+        const { text: aiTitle } = await generateText({
+          model: openrouter("openai/gpt-4o-mini"),
+          system: "Generate a catchy, very short (max 3 words) chat title. Match the user's language (e.g. German if he peaks German). DONT use robotic phrases like 'Assistance Request' or 'User Inquiry'. Be brief and creative. No quotes.",
+          messages: [
+            { role: "user", content: trimmedPrompt },
+            { role: "assistant", content: result.text }
+          ],
+          maxTokens: 15,
+        });
+
+        if (aiTitle && aiTitle.trim().length > 2) {
+          updatedTitle = aiTitle.trim().replace(/^["']|["']$/g, '');
+        }
+      } catch (e) {
+        console.error("AI Title Gen Failure:", e);
+      }
+    }
+
+    await db
+      .update(conversation)
+      .set({
+        updatedAt: new Date(),
+        ...(updatedTitle ? { title: updatedTitle } : {})
+      })
+      .where(eq(conversation.id, activeConversationId!));
+
+    const nextWorkspace = await getWorkspaceState(session.user.id, activeConversationId);
+
+    return NextResponse.json({
+      conversation: nextWorkspace.activeConversation,
+      conversations: nextWorkspace.conversations,
+      messages: nextWorkspace.messages,
+      usage: nextWorkspace.usage,
+    });
+  } catch (error) {
+    console.error("CHAT_API_ERROR:", error);
+    return NextResponse.json(
+      { error: "Internal Server Error", message: error instanceof Error ? error.message : "Possible model timeout or invalid model selected." },
+      { status: 500 }
+    );
   }
-
-  await db
-    .update(conversation)
-    .set({ 
-      updatedAt: new Date(),
-      ...(updatedTitle ? { title: updatedTitle } : {})
-    })
-    .where(eq(conversation.id, activeConversationId!));
-
-  const nextWorkspace = await getWorkspaceState(session.user.id, activeConversationId);
-
-  return NextResponse.json({
-    conversation: nextWorkspace.activeConversation,
-    conversations: nextWorkspace.conversations,
-    messages: nextWorkspace.messages,
-    usage: nextWorkspace.usage,
-  });
 }
