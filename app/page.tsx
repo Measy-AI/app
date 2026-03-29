@@ -119,8 +119,17 @@ export default async function HomePage() {
         </div>
       </section>
 
-      <footer className="border-t border-white/10 bg-black/20 px-6 py-6 text-center text-xs text-zinc-500">
-        (c) 2026 MeasyAI. All rights reserved.
+      <footer className="border-t border-white/10 bg-black/20 px-6 py-10">
+        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-6 sm:flex-row">
+          <p className="text-xs text-zinc-500">
+            &copy; 2026 MeasyAI. All rights reserved. Registered trademark of CraftingStudioPro.
+          </p>
+          <nav className="flex flex-wrap items-center gap-6 text-xs font-medium text-zinc-400">
+            <Link href="/imprint" className="hover:text-white transition-colors">Imprint</Link>
+            <Link href="/privacy" className="hover:text-white transition-colors">Privacy Policy</Link>
+            <Link href="/terms" className="hover:text-white transition-colors">Terms of Service</Link>
+          </nav>
+        </div>
       </footer>
     </main>
   );
