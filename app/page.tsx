@@ -22,12 +22,25 @@ const integrations = [
   "Vercel",
   "Stripe",
   "Discord",
-  "Postgres"
+  "Postgres",
+  "Supabase",
+  "OpenRouter",
+  "GitHub",
+  "GitLab",
+  "Slack",
+  "Better-Auth",
+  "Turso",
+  "Resend",
+  "Cloudflare",
+  "Prisma"
 ];
 
 export default async function HomePage() {
   const session = await auth.api.getSession({ headers: await headers() });
   const isLoggedIn = Boolean(session?.user?.id);
+  const half = Math.ceil(integrations.length / 2);
+  const row1 = integrations.slice(0, half);
+  const row2 = integrations.slice(half);
 
   return (
     <main className="relative z-10 bg-[#060609] text-zinc-100">
@@ -121,7 +134,7 @@ export default async function HomePage() {
             <div className="flex gap-6">
               {[0, 1].map((row) => (
                 <div key={row} className="flex min-w-full animate-marquee gap-6">
-                  {integrations.slice(0, 5).map((item) => (
+                  {row1.map((item) => (
                     <div key={`${row}-${item}`} className="glass group flex items-center gap-4 rounded-2xl border border-white/5 bg-white/[0.01] px-8 py-5 transition-all hover:border-accent/40 hover:bg-accent/5">
                       <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/5 transition-colors group-hover:bg-accent/20">
                         <Rocket className="h-4 w-4 text-zinc-500 group-hover:text-accent transition-colors" />
@@ -141,7 +154,7 @@ export default async function HomePage() {
             <div className="flex gap-6">
               {[0, 1].map((row) => (
                 <div key={row} className="flex min-w-full animate-marquee-reverse gap-6">
-                  {integrations.slice(5).map((item) => (
+                  {row2.map((item) => (
                     <div key={`${row}-${item}`} className="glass group flex items-center gap-4 rounded-2xl border border-white/5 bg-white/[0.01] px-8 py-5 transition-all hover:border-accent2/40 hover:bg-accent2/5">
                       <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/5 transition-colors group-hover:bg-accent2/20">
                         <Zap className="h-4 w-4 text-zinc-500 group-hover:text-accent2 transition-colors" />
