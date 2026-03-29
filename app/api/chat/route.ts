@@ -132,7 +132,7 @@ export async function POST(request: Request) {
     const result = await generateText({
       model: openrouter(selectedEngine),
       system: selectedSystemPrompt,
-      maxTokens: 40000000,
+      maxTokens: 4096,
       messages: history.map((m) => {
         const role = m.role as "user" | "assistant";
         const attachments = m.attachments ? (JSON.parse(m.attachments) as string[]) : [];
