@@ -116,7 +116,7 @@ export default async function HomePage() {
         ))}
       </section>
 
-      <section className="py-24 overflow-hidden relative border-y border-white/5">
+      <section className="py-24 overflow-hidden relative border-y border-white/5 bg-white/[0.01]">
         <div className="mx-auto max-w-6xl px-6 mb-16 flex flex-col items-center text-center">
           <div className="inline-flex items-center gap-2 rounded-full border border-accent/20 bg-accent/5 px-3 py-1 mb-4">
             <Globe className="h-3 w-3 text-accent" />
@@ -126,42 +126,36 @@ export default async function HomePage() {
           <p className="text-sm text-zinc-500 max-w-md">Seamlessly integrated with the world's most powerful platforms and developer tools.</p>
         </div>
         
-        <div className="relative space-y-8">
-          {/* Top Row - Standard Direction */}
-          <div className="relative">
+        <div className="relative flex flex-col gap-4">
+          {/* Top Row - Standard Direction (Faster) */}
+          <div className="group relative flex overflow-hidden p-2">
             <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-40 bg-gradient-to-r from-[#060609] to-transparent" />
             <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-40 bg-gradient-to-l from-[#060609] to-transparent" />
-            <div className="flex gap-6">
-              {[0, 1].map((row) => (
-                <div key={row} className="flex min-w-full animate-marquee gap-6">
-                  {row1.map((item) => (
-                    <div key={`${row}-${item}`} className="glass group flex items-center gap-4 rounded-2xl border border-white/5 bg-white/[0.01] px-8 py-5 transition-all hover:border-accent/40 hover:bg-accent/5">
-                      <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/5 transition-colors group-hover:bg-accent/20">
-                        <Rocket className="h-4 w-4 text-zinc-500 group-hover:text-accent transition-colors" />
-                      </div>
-                      <span className="text-sm font-bold tracking-tight text-zinc-400 group-hover:text-white transition-colors">{item}</span>
-                    </div>
-                  ))}
+            
+            <div className="flex animate-marquee gap-4 pr-4">
+              {[...row1, ...row1].map((item, idx) => (
+                <div key={idx} className="glass flex items-center gap-3 rounded-2xl border border-white/5 bg-white/[0.01] px-6 py-4 transition-all hover:border-accent/40 hover:bg-accent/5 min-w-max">
+                  <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/5">
+                    <Rocket className="h-3.5 w-3.5 text-accent" />
+                  </div>
+                  <span className="text-sm font-bold tracking-tight text-zinc-400">{item}</span>
                 </div>
               ))}
             </div>
           </div>
 
-          {/* Bottom Row - Reverse Direction */}
-          <div className="relative">
+          {/* Bottom Row - Reverse Direction (Slower) */}
+          <div className="group relative flex overflow-hidden p-2">
             <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-40 bg-gradient-to-r from-[#060609] to-transparent" />
             <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-40 bg-gradient-to-l from-[#060609] to-transparent" />
-            <div className="flex gap-6">
-              {[0, 1].map((row) => (
-                <div key={row} className="flex min-w-full animate-marquee-reverse gap-6">
-                  {row2.map((item) => (
-                    <div key={`${row}-${item}`} className="glass group flex items-center gap-4 rounded-2xl border border-white/5 bg-white/[0.01] px-8 py-5 transition-all hover:border-accent2/40 hover:bg-accent2/5">
-                      <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/5 transition-colors group-hover:bg-accent2/20">
-                        <Zap className="h-4 w-4 text-zinc-500 group-hover:text-accent2 transition-colors" />
-                      </div>
-                      <span className="text-sm font-bold tracking-tight text-zinc-400 group-hover:text-white transition-colors">{item}</span>
-                    </div>
-                  ))}
+            
+            <div className="flex animate-marquee-reverse gap-4 pr-4 [animation-duration:35s]">
+              {[...row2, ...row2].map((item, idx) => (
+                <div key={idx} className="glass flex items-center gap-3 rounded-2xl border border-white/5 bg-white/[0.01] px-6 py-4 transition-all hover:border-accent2/40 hover:bg-accent2/5 min-w-max">
+                  <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/5">
+                    <Zap className="h-3.5 w-3.5 text-accent2" />
+                  </div>
+                  <span className="text-sm font-bold tracking-tight text-zinc-400">{item}</span>
                 </div>
               ))}
             </div>
