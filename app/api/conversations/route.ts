@@ -7,20 +7,25 @@ import { user } from "@/lib/schema";
 import { getWorkspaceState } from "@/lib/workspace";
 
 export async function GET() {
-  const session = await auth.api.getSession({ headers: await headers() });
+  try {
+    const session = await auth.api.getSession({ headers: await headers() });
 
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const workspace = await getWorkspaceState(session.user.id);
+    const [dbUser] = await db.select().from(user).where(eq(user.id, session.user.id)).limit(1);
+
+    return NextResponse.json({
+      conversation: workspace.activeConversation,
+      conversations: workspace.conversations,
+      messages: workspace.messages,
+      usage: workspace.usage,
+      plan: dbUser?.plan ?? "free",
+    });
+  } catch (error) {
+    console.error("CONVERSATIONS_GET_ERROR:", error);
+    return NextResponse.json({ error: "Internal Server Error", message: error instanceof Error ? error.message : "Unknown error" }, { status: 500 });
   }
-
-  const workspace = await getWorkspaceState(session.user.id);
-  const [dbUser] = await db.select().from(user).where(eq(user.id, session.user.id)).limit(1);
-
-  return NextResponse.json({
-    conversation: workspace.activeConversation,
-    conversations: workspace.conversations,
-    messages: workspace.messages,
-    usage: workspace.usage,
-    plan: dbUser?.plan ?? "free",
-  });
 }
