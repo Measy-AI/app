@@ -115,15 +115,17 @@ export default async function HomePage() {
           <div className="flex flex-wrap justify-center gap-3">
             <Link href="/register" className="rounded-xl bg-accent px-6 py-3 text-sm font-medium text-white shadow-glow">Get started free</Link>
             <Link href="/buy" className="glass rounded-xl px-6 py-3 text-sm font-medium text-zinc-100">Buy Pro</Link>
-            <Link href="/imprint" className="glass rounded-xl px-6 py-3 text-sm font-medium text-zinc-100">Imprint</Link>
           </div>
         </div>
       </section>
 
-      <footer className="border-t border-white/10 bg-black/20 px-6 py-6 text-center text-xs text-zinc-500">
+      <footer className="border-t border-white/10 bg-black/20 px-6 py-6 text-center text-xs text-zinc-500 flex flex-col gap-2">
         © 2026 MeasyAI. All rights reserved.
-        <Link href="/privacy" className="text-sm text-zinc-500">Privacy</Link>
-        <Link href="/terms" className="text-sm text-zinc-500">Terms</Link>
+        <div className="flex gap-2">
+          <Link href="/privacy" className="text-sm text-zinc-500">Privacy</Link>
+          <Link href="/terms" className="text-sm text-zinc-500">Terms</Link>
+          <Link href="/imprint" className="text-sm text-zinc-500">Imprint</Link>
+        </div>
       </footer>
     </main>
   );
