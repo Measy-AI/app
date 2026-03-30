@@ -6,7 +6,6 @@ import Script from "next/script";
 import { authClient } from "@/lib/auth-client";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
-import { headers } from "next/headers";
 
 type TurnstileWindow = Window & {
   onTurnstileSuccess?: (token: string) => void;
@@ -25,8 +24,8 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isDiscordLoading, setIsDiscordLoading] = useState(false);
   const loggedIn = useMemo(async () => {
-    const session = await auth.api.getSession({ headers: await headers() });
-    return Boolean(session?.user?.id);
+    const { data, error } = await authClient.getSession()
+    return Boolean(data?.user?.id);
   }, []);
 
   loggedIn.then((loggedIn) => {
