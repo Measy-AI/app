@@ -121,7 +121,7 @@ export default async function HomePage() {
       </section>
 
       <footer className="border-t border-white/10 bg-black/20 px-6 py-6 text-center text-xs text-zinc-500">
-        (c) 2026 MeasyAI. All rights reserved.
+        © 2026 MeasyAI. All rights reserved.
         <Link href="/privacy" className="text-sm text-zinc-500">Privacy</Link>
         <Link href="/terms" className="text-sm text-zinc-500">Terms</Link>
       </footer>
