@@ -4,6 +4,7 @@ import { type FormEvent, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import Script from "next/script";
 import { authClient } from "@/lib/auth-client";
+import { redirect } from "next/navigation";
 
 type TurnstileWindow = Window & {
   onTurnstileSuccess?: (token: string) => void;
@@ -24,6 +25,15 @@ export default function RegisterPage() {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isDiscordLoading, setIsDiscordLoading] = useState(false);
+
+  const { data: session } = authClient.useSession();
+  const loggedIn = Boolean(session?.user?.id);
+
+  useEffect(() => {
+    if (loggedIn) {
+      redirect("/dashboard");
+    }
+  }, [loggedIn]);
 
   const turnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? "";
   const turnstileConfigured = useMemo(() => turnstileSiteKey.length > 0, [turnstileSiteKey]);

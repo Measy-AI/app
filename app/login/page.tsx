@@ -4,6 +4,9 @@ import { type FormEvent, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import Script from "next/script";
 import { authClient } from "@/lib/auth-client";
+import { redirect } from "next/navigation";
+import { auth } from "@/lib/auth";
+import { headers } from "next/headers";
 
 type TurnstileWindow = Window & {
   onTurnstileSuccess?: (token: string) => void;
@@ -21,6 +24,16 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isDiscordLoading, setIsDiscordLoading] = useState(false);
+  const loggedIn = useMemo(async () => {
+    const session = await auth.api.getSession({ headers: await headers() });
+    return Boolean(session?.user?.id);
+  }, []);
+
+  loggedIn.then((loggedIn) => {
+    if (loggedIn) {
+      redirect("/dashboard");
+    }
+  });
 
   const turnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? "";
   const turnstileConfigured = useMemo(() => turnstileSiteKey.length > 0, [turnstileSiteKey]);
