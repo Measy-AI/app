@@ -115,6 +115,9 @@ export default async function HomePage() {
           <div className="flex flex-wrap justify-center gap-3">
             <Link href="/register" className="rounded-xl bg-accent px-6 py-3 text-sm font-medium text-white shadow-glow">Get started free</Link>
             <Link href="/buy" className="glass rounded-xl px-6 py-3 text-sm font-medium text-zinc-100">Buy Pro</Link>
+            <Link href="/imprint" className="glass rounded-xl px-6 py-3 text-sm font-medium text-zinc-100">Imprint</Link>
+            <Link href="/privacy" className="glass rounded-xl px-6 py-3 text-sm font-medium text-zinc-100">Privacy</Link>
+            <Link href="/terms" className="glass rounded-xl px-6 py-3 text-sm font-medium text-zinc-100">Terms</Link>
           </div>
         </div>
       </section>
