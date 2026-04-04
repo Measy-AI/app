@@ -1,6 +1,7 @@
 import { PHASE_DEVELOPMENT_SERVER } from "next/constants.js";
 
 const sharedConfig = {
+  serverExternalPackages: ["@libsql/client", "libsql"],
   experimental: {
     serverActions: {
       bodySizeLimit: "2mb",
