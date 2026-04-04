@@ -11,7 +11,12 @@ const config: OpenNextConfig = {
       queue: "dummy",
     },
   },
-  edgeExternals: ["node:crypto"],
+  edgeExternals: [
+    "node:crypto",
+    "@libsql/client",
+    "@libsql/isomorphic-ws",
+    "@libsql/hrana-client",
+  ],
   middleware: {
     external: true,
     override: {
