@@ -1,6 +1,7 @@
 import { PHASE_DEVELOPMENT_SERVER } from "next/constants.js";
 
 const sharedConfig = {
+  output: "standalone",
   serverExternalPackages: ["@libsql/client", "libsql"],
   experimental: {
     serverActions: {
