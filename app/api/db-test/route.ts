@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { getRawD1Binding } from "@/lib/db";
 
+export const runtime = "edge";
+
 export async function GET() {
   try {
     // 1. Get the RAW binding (no Drizzle)
