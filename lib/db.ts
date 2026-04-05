@@ -6,7 +6,7 @@ import * as schema from "@/lib/schema";
 /**
  * THE ULTIMATE D1 DISCOVERY
  */
-function findD1Binding() {
+export function getRawD1Binding() {
   const globalObj = globalThis as any;
   const envKeys = ['measy_ai_db', 'DB'];
 
@@ -47,7 +47,7 @@ let _cachedDb: any = null;
 export function getDb() {
   if (_cachedDb) return _cachedDb;
 
-  const d1 = findD1Binding();
+  const d1 = getRawD1Binding();
   if (d1) {
     _cachedDb = drizzle(d1, { schema });
     return _cachedDb;
