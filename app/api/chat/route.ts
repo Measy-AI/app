@@ -110,7 +110,7 @@ export async function POST(request: Request) {
     const history = await db
       .select()
       .from(message)
-      .where(eq(message.conversationId, activeConversationId))
+      .where(eq(message.conversationId, activeConversationId!))
       .orderBy(message.createdAt);
 
     const isPro = modelKey === "pro" && dbUser?.plan === "pro";
