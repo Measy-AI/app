@@ -3,29 +3,45 @@ import { drizzle as drizzleLibsql } from "drizzle-orm/libsql";
 import { createClient } from "@libsql/client/web";
 import * as schema from "@/lib/schema";
 
-// Standard function to get DB, now with Cloudflare Request Context support
-export function getDb() {
+// Helper to find a D1-like object in the global scope
+function findD1Binding() {
   const env = (process.env || {}) as any;
-  
-  // 1. Try official Cloudflare Request Context (Next.js 15 / OpenNext pattern)
+  const globalObj = globalThis as any;
+
+  // 1. Check known names in process.env
+  if (env.measy_ai_db?.prepare) return env.measy_ai_db;
+  if (env.DB?.prepare) return env.DB;
+
+  // 2. Check known names in globalThis
+  if (globalObj.measy_ai_db?.prepare) return globalObj.measy_ai_db;
+  if (globalObj.DB?.prepare) return globalObj.DB;
+
+  // 3. AGGRESSIVE SCAN: Look for any global object that has a .prepare() function
+  // Cloudflare bindings are often injected directly into the global scope
   try {
-    // @ts-ignore - getRequestContext might not be in types but is available at runtime in OpenNext
-    const { getRequestContext } = require("@opennextjs/cloudflare");
-    const ctx = getRequestContext();
-    if (ctx?.env?.measy_ai_db) {
-      return drizzleD1(ctx.env.measy_ai_db, { schema });
+    for (const key in globalObj) {
+      const val = globalObj[key];
+      if (val && typeof val === 'object' && typeof val.prepare === 'function' && typeof val.batch === 'function') {
+        return val;
+      }
     }
   } catch (e) {
-    // Ignore error if getRequestContext is not available (e.g. during build)
+    // Ignore scan errors
   }
 
-  // 2. Fallback to process.env or global (for other runtimes)
-  const d1 = env.measy_ai_db || (globalThis as any).measy_ai_db;
-  if (d1 && typeof d1.prepare === 'function') {
+  return null;
+}
+
+export function getDb() {
+  // Try to find the D1 binding
+  const d1 = findD1Binding();
+  if (d1) {
     return drizzleD1(d1, { schema });
   }
 
-  // 3. Fallback to Libsql (Local Dev)
+  // Fallback to Libsql (Local Dev / Build Time)
+  // This helps when D1 is not found to at least not crash immediately
+  const env = (process.env || {}) as any;
   const databaseUrl = env.DATABASE_TURSO_DATABASE_URL || env.TURSO_DATABASE_URL || "file:./dev.db";
   const authToken = env.DATABASE_TURSO_AUTH_TOKEN || env.TURSO_AUTH_TOKEN;
 
@@ -37,7 +53,6 @@ export function getDb() {
   return drizzleLibsql(client, { schema });
 }
 
-// Proxy object that always calls getDb() to ensure we get the latest environment bindings
 export const db = new Proxy({} as any, {
   get(_, prop) {
     const database = getDb();
