@@ -23,7 +23,6 @@ import {
 } from "@/lib/workspace";
 
 export const maxDuration = 30;
-export const runtime = "edge";
 
 function createOpenRouterProvider() {
   const appUrl = process.env.OPENROUTER_HTTP_REFERER ?? process.env.NEXT_PUBLIC_APP_URL;
