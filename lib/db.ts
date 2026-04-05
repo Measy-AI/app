@@ -1,29 +1,25 @@
-import { createClient } from "@libsql/client/web"; // Web version for Cloudflare compatibility
-import { drizzle } from "drizzle-orm/libsql";
+import { drizzle as drizzleD1 } from "drizzle-orm/d1";
+import { drizzle as drizzleLibsql } from "drizzle-orm/libsql";
+import { createClient } from "@libsql/client/web";
 import * as schema from "@/lib/schema";
 
-const isDev = process.env.NODE_ENV === "development";
+export function getDb() {
+  // Cloudflare D1 Binding (Production)
+  const d1 = (process.env as any).measy_ai_db;
+  if (d1) {
+    return drizzleD1(d1, { schema });
+  }
 
-const tursoDatabaseUrl = process.env.TURSO_DATABASE_URL?.trim();
-const databaseTursoUrl = process.env.DATABASE_TURSO_DATABASE_URL?.trim();
-const fallbackDatabaseUrl = process.env.DATABASE_URL?.trim();
-const databaseUrl = databaseTursoUrl || tursoDatabaseUrl || fallbackDatabaseUrl || "file:./dev.db";
-const authToken = process.env.TURSO_AUTH_TOKEN?.trim();
-const databaseTursoAuthToken = process.env.DATABASE_TURSO_AUTH_TOKEN?.trim();
+  // Fallback to Libsql (Local Dev)
+  const databaseUrl = process.env.DATABASE_TURSO_DATABASE_URL || process.env.TURSO_DATABASE_URL || "file:./dev.db";
+  const authToken = process.env.DATABASE_TURSO_AUTH_TOKEN || process.env.TURSO_AUTH_TOKEN;
 
-// Note: Cloudflare Workers requires HTTP-based connection (turso/libsql URLs)
-// Local file-based development may require @libsql/client (non-web)
-if (!isDev && databaseUrl.startsWith("file:")) {
-  console.warn("⚠️ Database URL is " + databaseUrl + " but you are NOT in development. Cloudflare Workers cannot access local files. Please set TURSO_DATABASE_URL.");
-} else {
-  console.log("ℹ️ Using database URL: " + databaseUrl.split("@")[0].replace(/:[^:]+$/, ":****")); // Mask password
+  const client = createClient({
+    url: databaseUrl,
+    authToken: authToken,
+  });
+
+  return drizzleLibsql(client, { schema });
 }
 
-const client = createClient({
-  url: databaseUrl,
-  ...(databaseTursoAuthToken || authToken ? { authToken: databaseTursoAuthToken || authToken } : {}),
-});
-
-export const db = drizzle(client, { schema });
-
-export { client };
+export const db = getDb();

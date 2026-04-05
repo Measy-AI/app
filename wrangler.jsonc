@@ -1,14 +1,24 @@
 {
-  "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "app",
-  "main": ".open-next/worker.js",
-  "compatibility_date": "2024-09-23",
-  "compatibility_flags": ["nodejs_compat"],
-  "assets": {
-    "directory": ".open-next/assets",
-    "binding": "ASSETS"
-  },
-  "observability": {
-    "enabled": true
-  }
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "app",
+	"main": ".open-next/worker.js",
+	"compatibility_date": "2024-09-23",
+	"compatibility_flags": [
+		"nodejs_compat"
+	],
+	"assets": {
+		"directory": ".open-next/assets",
+		"binding": "ASSETS"
+	},
+	"observability": {
+		"enabled": true
+	},
+	"d1_databases": [
+		{
+			"binding": "measy_ai_db",
+			"database_name": "measy-ai-db",
+			"database_id": "f6a36c70-2f92-4a53-92a5-e5db2a135717",
+			"remote": true
+		}
+	]
 }
