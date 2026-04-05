@@ -133,7 +133,7 @@ export async function POST(request: Request) {
       model: openrouter(selectedEngine),
       system: selectedSystemPrompt,
       maxTokens: 1024,
-      messages: history.map((m) => {
+      messages: history.map((m: typeof message.$inferSelect) => {
         const role = m.role as "user" | "assistant";
         const attachments = m.attachments ? (JSON.parse(m.attachments) as string[]) : [];
 

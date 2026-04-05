@@ -42,30 +42,32 @@ export async function createConversation(userId: string, title = "New chat", mod
   return created;
 }
 
-export async function listConversations(userId: string) {
-  return db
+export async function listConversations(userId: string): Promise<ConversationRecord[]> {
+  const result = await db
     .select()
     .from(conversation)
     .where(eq(conversation.userId, userId))
     .orderBy(desc(conversation.updatedAt));
+  return result as ConversationRecord[];
 }
 
-export async function getConversationById(userId: string, conversationId: string) {
+export async function getConversationById(userId: string, conversationId: string): Promise<ConversationRecord | null> {
   const [record] = await db
     .select()
     .from(conversation)
     .where(and(eq(conversation.id, conversationId), eq(conversation.userId, userId)))
     .limit(1);
 
-  return record ?? null;
+  return (record as ConversationRecord) ?? null;
 }
 
-export async function getConversationMessages(conversationId: string) {
-  return db
+export async function getConversationMessages(conversationId: string): Promise<MessageRecord[]> {
+  const result = await db
     .select()
     .from(message)
     .where(eq(message.conversationId, conversationId))
     .orderBy(asc(message.createdAt));
+  return result as MessageRecord[];
 }
 
 export async function deleteConversationById(userId: string, conversationId: string) {
@@ -111,7 +113,7 @@ export async function getUsageSummary(userId: string) {
     .from(dailyUsage)
     .where(and(eq(dailyUsage.userId, userId), eq(dailyUsage.dateKey, dateKey)));
 
-  const proUsed = usageRows.find((item) => item.modelKey === "pro")?.count ?? 0;
+  const proUsed = (usageRows as any[]).find((item) => item.modelKey === "pro")?.count ?? 0;
 
   return {
     proUsed,
@@ -123,7 +125,7 @@ export async function getUsageSummary(userId: string) {
 export async function getWorkspaceState(userId: string, requestedConversationId?: string | null) {
   const conversations = await listConversations(userId);
   const activeConversation =
-    (requestedConversationId ? conversations.find((item) => item.id === requestedConversationId) : null) ?? null;
+    (requestedConversationId ? (conversations as ConversationRecord[]).find((item) => item.id === requestedConversationId) : null) ?? null;
   const messages = activeConversation ? await getConversationMessages(activeConversation.id) : [];
   const usage = await getUsageSummary(userId);
 
