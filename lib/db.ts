@@ -4,12 +4,25 @@ import { createClient } from "@libsql/client/web";
 import * as schema from "@/lib/schema";
 
 /**
- * THE CLEAN DISCOVERY
+ * THE OPEN-NEXT CONTEXT RESOLVER
  */
 export function getRawD1Binding() {
   const globalObj = globalThis as any;
-  const env = (process.env || {}) as any;
   
+  // 1. Try OpenNext official Request Context
+  try {
+    // We use a dynamic require/import-like check to avoid build-time crashes
+    const { getRequestContext } = require("@opennextjs/cloudflare");
+    const ctx = getRequestContext();
+    if (ctx && ctx.env && ctx.env.measy_ai_db) {
+      return ctx.env.measy_ai_db;
+    }
+  } catch (e) {
+    // getRequestContext might not be available at build time
+  }
+
+  // 2. Fallbacks for other environments
+  const env = (process.env || {}) as any;
   const bindingName = 'measy_ai_db';
   return globalObj[bindingName] || 
          env[bindingName] || 
@@ -18,10 +31,6 @@ export function getRawD1Binding() {
          Reflect.get(globalObj, bindingName);
 }
 
-/**
- * Returns a fresh Drizzle instance.
- * Handles build-time by falling back to Libsql instead of throwing.
- */
 export function getDb() {
   const d1 = getRawD1Binding();
   const env = (process.env || {}) as any;
@@ -30,8 +39,7 @@ export function getDb() {
     return drizzle(d1, { schema });
   }
 
-  // FALLBACK for Local Dev / Build Time / CI
-  // Use a local DB file so the build can complete without errors
+  // Fallback for Build/CI
   const databaseUrl = env.DATABASE_TURSO_DATABASE_URL || env.TURSO_DATABASE_URL || "file:./dev.db";
   const authToken = env.DATABASE_TURSO_AUTH_TOKEN || env.TURSO_AUTH_TOKEN;
 
@@ -43,7 +51,6 @@ export function getDb() {
   return drizzleLibsql(client, { schema });
 }
 
-// Delegating export for clean imports
 export const db = {
   select: (...args: any[]) => (getDb() as any).select(...args),
   insert: (...args: any[]) => (getDb() as any).insert(...args),
