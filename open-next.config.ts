@@ -3,14 +3,30 @@ import type { OpenNextConfig } from "@opennextjs/cloudflare";
 const config: OpenNextConfig = {
   default: {
     override: {
-      // Changed to 'cloudflare-edge' for full access to bindings like D1
-      wrapper: "cloudflare-edge",
+      wrapper: "cloudflare-node",
       converter: "edge",
       proxyExternalRequest: "fetch",
       incrementalCache: "dummy",
       tagCache: "dummy",
       queue: "dummy",
     },
+  },
+  // Explicitly define edge functions for routes that need D1 bindings
+  functions: {
+    auth: {
+      patterns: ["api/auth/*"],
+      override: {
+        wrapper: "cloudflare-edge",
+        converter: "edge",
+      }
+    },
+    dbTest: {
+      patterns: ["api/db-test"],
+      override: {
+        wrapper: "cloudflare-edge",
+        converter: "edge",
+      }
+    }
   },
   edgeExternals: ["node:crypto"],
   middleware: {
