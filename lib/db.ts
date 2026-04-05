@@ -10,10 +10,10 @@ export function getRawD1Binding() {
   const globalObj = globalThis as any;
   const envKeys = ['measy_ai_db', 'DB'];
 
-  // 1. Try getRequestContext
+  // 1. Try getCloudflareContext
   try {
-    const { getRequestContext } = require("@opennextjs/cloudflare");
-    const ctx = getRequestContext();
+    const { getCloudflareContext } = require("@opennextjs/cloudflare");
+    const ctx = getCloudflareContext();
     if (ctx?.env) {
       for (const key of envKeys) {
         if (ctx.env[key]?.prepare) return ctx.env[key];
