@@ -1,7 +1,5 @@
 import { NextResponse } from "next/server";
 
-export const runtime = "edge";
-
 export async function GET() {
   const env = process.env as any;
   const globalEnv = globalThis as any;
