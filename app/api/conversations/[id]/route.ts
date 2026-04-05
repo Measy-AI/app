@@ -3,6 +3,8 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { deleteConversationById, getConversationById, getWorkspaceState } from "@/lib/workspace";
 
+export const runtime = "edge";
+
 export async function GET(_: Request, context: { params: Promise<{ id: string }> }) {
   try {
     const session = await auth.api.getSession({ headers: await headers() });

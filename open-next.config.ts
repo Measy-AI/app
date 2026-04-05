@@ -11,25 +11,6 @@ const config: OpenNextConfig = {
       queue: "dummy",
     },
   },
-  // Explicitly define edge functions for routes that need D1 bindings
-  functions: {
-    auth: {
-      routes: ["api/auth/*"],
-      patterns: ["api/auth/*"],
-      override: {
-        wrapper: "cloudflare-edge",
-        converter: "edge",
-      }
-    },
-    dbTest: {
-      routes: ["api/db-test"],
-      patterns: ["api/db-test"],
-      override: {
-        wrapper: "cloudflare-edge",
-        converter: "edge",
-      }
-    }
-  },
   edgeExternals: ["node:crypto"],
   middleware: {
     external: true,

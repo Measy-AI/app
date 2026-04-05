@@ -6,6 +6,8 @@ import { db } from "@/lib/db";
 import { user } from "@/lib/schema";
 import { getWorkspaceState } from "@/lib/workspace";
 
+export const runtime = "edge";
+
 export async function GET() {
   try {
     const session = await auth.api.getSession({ headers: await headers() });
