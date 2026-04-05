@@ -47,6 +47,10 @@ function getAuthInstance() {
 export const auth = new Proxy({} as any, {
   get(_, prop) {
     const instance = getAuthInstance();
-    return (instance as any)[prop];
-  }
+    const value = (instance as any)[prop];
+    if (typeof value === "function") {
+      return value.bind(instance);
+    }
+    return value;
+  },
 }) as ReturnType<typeof betterAuth>;

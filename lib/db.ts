@@ -60,6 +60,10 @@ export function getDb() {
 export const db = new Proxy({} as any, {
   get(_, prop) {
     const database = getDb();
-    return (database as any)[prop];
-  }
+    const value = (database as any)[prop];
+    if (typeof value === "function") {
+      return value.bind(database);
+    }
+    return value;
+  },
 });
