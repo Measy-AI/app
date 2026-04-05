@@ -13,6 +13,12 @@ const databaseTursoAuthToken = process.env.DATABASE_TURSO_AUTH_TOKEN?.trim();
 
 // Note: Cloudflare Workers requires HTTP-based connection (turso/libsql URLs)
 // Local file-based development may require @libsql/client (non-web)
+if (!isDev && databaseUrl.startsWith("file:")) {
+  console.warn("⚠️ Database URL is " + databaseUrl + " but you are NOT in development. Cloudflare Workers cannot access local files. Please set TURSO_DATABASE_URL.");
+} else {
+  console.log("ℹ️ Using database URL: " + databaseUrl.split("@")[0].replace(/:[^:]+$/, ":****")); // Mask password
+}
+
 const client = createClient({
   url: databaseUrl,
   ...(databaseTursoAuthToken || authToken ? { authToken: databaseTursoAuthToken || authToken } : {}),
