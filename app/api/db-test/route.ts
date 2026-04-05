@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { sql } from "drizzle-orm";
 
-export const runtime = "edge";
+// Default runtime
 
 export async function GET() {
   try {
