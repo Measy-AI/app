@@ -3,54 +3,34 @@ import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { nextCookies } from "better-auth/next-js";
 import { db } from "@/lib/db";
 import { schema } from "@/lib/schema";
-
 import { buildAllowedHosts, buildTrustedOrigins, resolveAuthBaseUrl } from "@/lib/auth-url";
 
 /**
- * We wrap the auth instance in a proxy to ensure it always uses
- * the latest environment variables (secrets/database) at request time.
- * This is critical for Next.js 15 on Cloudflare Workers.
+ * We return to a direct export. This is safer for Better Auth internals
+ * and prevents 'a2 is not a function' Proxy context errors.
  */
-let _authInstance: any = null;
-
-function getAuthInstance() {
-  if (_authInstance) return _authInstance;
-
-  _authInstance = betterAuth({
-    appName: "MeasyAI",
-    baseURL: {
-      allowedHosts: buildAllowedHosts(),
-      fallback: resolveAuthBaseUrl(),
-    },
-    secret: process.env.BETTER_AUTH_SECRET,
-    database: drizzleAdapter(db, {
-      provider: "sqlite",
-      schema,
-    }),
-    emailAndPassword: {
-      enabled: true,
-      autoSignIn: true,
-    },
-    socialProviders: {
-      discord: {
-        clientId: process.env.DISCORD_CLIENT_ID!,
-        clientSecret: process.env.DISCORD_CLIENT_SECRET!,
-      },
-    },
-    plugins: [nextCookies()],
-    trustedOrigins: async () => buildTrustedOrigins(),
-  });
-
-  return _authInstance;
-}
-
-export const auth = new Proxy({} as any, {
-  get(_, prop) {
-    const instance = getAuthInstance();
-    const value = (instance as any)[prop];
-    if (typeof value === "function") {
-      return value.bind(instance);
-    }
-    return value;
+export const auth = betterAuth({
+  appName: "MeasyAI",
+  baseURL: {
+    allowedHosts: buildAllowedHosts(),
+    fallback: resolveAuthBaseUrl(),
   },
-}) as ReturnType<typeof betterAuth>;
+  // Ensure we have a valid secret even at build time
+  secret: process.env.BETTER_AUTH_SECRET || "dummy_secret_for_build",
+  database: drizzleAdapter(db, {
+    provider: "sqlite",
+    schema,
+  }),
+  emailAndPassword: {
+    enabled: true,
+    autoSignIn: true,
+  },
+  socialProviders: {
+    discord: {
+      clientId: process.env.DISCORD_CLIENT_ID || "dummy",
+      clientSecret: process.env.DISCORD_CLIENT_SECRET || "dummy",
+    },
+  },
+  plugins: [nextCookies()],
+  trustedOrigins: async () => buildTrustedOrigins(),
+});
