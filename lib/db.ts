@@ -3,20 +3,32 @@ import { drizzle as drizzleLibsql } from "drizzle-orm/libsql";
 import { createClient } from "@libsql/client/web";
 import * as schema from "@/lib/schema";
 
-// 1. The Actual Resolver (Must be called inside the proxy)
 function getDbInstance() {
   const globalObj = globalThis as any;
   const env = (process.env || {}) as any;
-  const cfEnvSymbol = Symbol.for('cloudflare.env');
-  const cfEnv = env[cfEnvSymbol] || globalObj[cfEnvSymbol] || globalObj;
 
-  const d1 = cfEnv.measy_ai_db || cfEnv.DB || env.measy_ai_db || env.DB;
+  // 1. ABSOLUTE DISCOVERY for Cloudflare Bindings
+  // We check directly by name using Reflect to handle hidden/non-enumerable properties
+  const bindingName = 'measy_ai_db';
+  const d1 = Reflect.get(globalObj, bindingName) || 
+             Reflect.get(env, bindingName) ||
+             globalObj.measy_ai_db ||
+             env.measy_ai_db ||
+             globalObj.DB ||
+             env.DB ||
+             (globalObj.process?.env?.[bindingName]);
 
   if (d1 && typeof d1.prepare === 'function') {
     return drizzleD1(d1, { schema });
   }
 
-  // Fallback for Local Dev / Build
+  // Monitor for missing bindings in production
+  if (typeof globalObj.caches !== 'undefined') {
+    console.warn(`[DB-DEBUG] Binding '${bindingName}' was NOT found in globalThis or process.env.`);
+    console.warn(`[DB-DEBUG] Available global keys: ${Object.getOwnPropertyNames(globalObj).filter(k => k.includes('db') || k.includes('measy'))}`);
+  }
+
+  // 2. Fallback to Libsql (Local Dev / Build Time)
   const databaseUrl = env.DATABASE_TURSO_DATABASE_URL || env.TURSO_DATABASE_URL || "file:./dev.db";
   const authToken = env.DATABASE_TURSO_AUTH_TOKEN || env.TURSO_AUTH_TOKEN;
 
@@ -28,37 +40,19 @@ function getDbInstance() {
   return drizzleLibsql(client, { schema });
 }
 
-// 2. A robust proxy helper that handles function binding correctly
+// Robust lazy proxy helper
 function createLazyProxy(resolver: () => any) {
   let instance: any = null;
-  
   function getInstance() {
     if (!instance) instance = resolver();
     return instance;
   }
-
   return new Proxy({} as any, {
     get(_, prop) {
       const inst = getInstance();
       const val = inst[prop];
-      
-      if (typeof val === 'function') {
-        return val.bind(inst);
-      }
+      if (typeof val === 'function') return val.bind(inst);
       return val;
-    },
-    // Important for Drizzle/Better Auth: support property descriptors and other internal checks
-    getOwnPropertyDescriptor(_, prop) {
-      const inst = getInstance();
-      return Object.getOwnPropertyDescriptor(inst, prop);
-    },
-    has(_, prop) {
-      const inst = getInstance();
-      return prop in inst;
-    },
-    ownKeys(_) {
-      const inst = getInstance();
-      return Reflect.ownKeys(inst);
     }
   });
 }
