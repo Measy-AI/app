@@ -1,9 +1,10 @@
 import { drizzle } from "drizzle-orm/d1";
+import { drizzle as drizzleLibsql } from "drizzle-orm/libsql";
+import { createClient } from "@libsql/client/web";
 import * as schema from "@/lib/schema";
 
 /**
  * THE CLEAN DISCOVERY
- * No proxies, just a direct search at the moment of the request.
  */
 export function getRawD1Binding() {
   const globalObj = globalThis as any;
@@ -18,17 +19,31 @@ export function getRawD1Binding() {
 }
 
 /**
- * Returns a fresh Drizzle instance using the current D1 binding.
+ * Returns a fresh Drizzle instance.
+ * Handles build-time by falling back to Libsql instead of throwing.
  */
 export function getDb() {
   const d1 = getRawD1Binding();
-  if (!d1) {
-    throw new Error("D1 Binding 'measy_ai_db' not found. Ensure Cloudflare environment is ready.");
+  const env = (process.env || {}) as any;
+
+  if (d1 && typeof d1.prepare === 'function') {
+    return drizzle(d1, { schema });
   }
-  return drizzle(d1, { schema });
+
+  // FALLBACK for Local Dev / Build Time / CI
+  // Use a local DB file so the build can complete without errors
+  const databaseUrl = env.DATABASE_TURSO_DATABASE_URL || env.TURSO_DATABASE_URL || "file:./dev.db";
+  const authToken = env.DATABASE_TURSO_AUTH_TOKEN || env.TURSO_AUTH_TOKEN;
+
+  const client = createClient({
+    url: databaseUrl,
+    authToken: authToken,
+  });
+
+  return drizzleLibsql(client, { schema });
 }
 
-// We still export 'db' for compatibility, but as a direct lookup object
+// Delegating export for clean imports
 export const db = {
   select: (...args: any[]) => (getDb() as any).select(...args),
   insert: (...args: any[]) => (getDb() as any).insert(...args),
@@ -38,4 +53,5 @@ export const db = {
   run: (sql: any) => getDb().run(sql),
   all: (sql: any) => getDb().all(sql),
   batch: (sqls: any[]) => getDb().batch(sqls as any),
+  transaction: (...args: any[]) => (getDb() as any).transaction(...args),
 } as any;
