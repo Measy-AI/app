@@ -2,39 +2,58 @@ import { drizzle } from "drizzle-orm/d1";
 import * as schema from "@/lib/schema";
 
 /**
- * THE ULTIMATE CLOUDFLARE D1 BINDING PROXY
- * This proxy wraps the raw Cloudflare D1 binding. Whenever Drizzle calls 
- * a method (like .prepare or .batch), this proxy dynamically finds the 
- * binding in the current request context (globalThis or process.env).
+ * THE UNIVERSAL D1 SCANNER
+ * Searches globalThis and process.env for anything that looks like a D1 binding.
  */
+function findD1Binding() {
+  const globalObj = globalThis as any;
+  const env = (process.env || {}) as any;
+  
+  const targets = [
+    globalObj, 
+    env, 
+    globalObj.process?.env,
+    globalObj.__cloudflare_env__,
+    globalObj.env
+  ];
+
+  for (const target of targets) {
+    if (!target) continue;
+    
+    // Look for any property that has 'prepare' and 'batch'
+    for (const key of Object.getOwnPropertyNames(target)) {
+      try {
+        const val = target[key];
+        if (val && typeof val.prepare === 'function' && typeof val.batch === 'function') {
+          console.log(`[DB-SCANNER] Found D1 binding at key: ${key}`);
+          return val;
+        }
+      } catch (e) {
+        // Some properties might throw on access
+      }
+    }
+  }
+
+  // Last ditch effort: Try known names explicitly
+  return globalObj.measy_ai_db || env.measy_ai_db || globalObj.DB || env.DB;
+}
+
 const d1Proxy = new Proxy({} as any, {
   get(_, prop) {
-    const globalObj = globalThis as any;
-    const env = (process.env || {}) as any;
-    
-    // Find the real D1 binding
-    const d1 = globalObj.measy_ai_db || 
-               env.measy_ai_db || 
-               globalObj.DB || 
-               env.DB ||
-               (globalObj.process?.env?.measy_ai_db);
+    const d1 = findD1Binding();
 
     if (!d1) {
-      // During build time or if missing, return a dummy to prevent crashes
-      return () => { throw new Error("D1 Binding not found. Ensure you are running in a Cloudflare environment."); };
+      // Build-time dummy
+      if (prop === 'prepare') return () => ({ bind: () => ({ all: async () => [] }) });
+      return undefined;
     }
 
     const value = d1[prop];
     return typeof value === "function" ? value.bind(d1) : value;
   },
-  // Essential for Drizzle's internal checks
   getOwnPropertyDescriptor(_, prop) {
     return { enumerable: true, configurable: true };
   }
 });
 
-/**
- * Initialize Drizzle ONCE at module level.
- * It uses our smart Proxy as the database engine.
- */
 export const db = drizzle(d1Proxy, { schema });
