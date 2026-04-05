@@ -7,7 +7,7 @@ import * as schema from "@/lib/schema";
 function findD1Binding() {
   const env = (process.env || {}) as any;
   const globalObj = globalThis as any;
-
+  
   // 1. Check known names in process.env
   if (env.measy_ai_db?.prepare) return env.measy_ai_db;
   if (env.DB?.prepare) return env.DB;
@@ -16,35 +16,39 @@ function findD1Binding() {
   if (globalObj.measy_ai_db?.prepare) return globalObj.measy_ai_db;
   if (globalObj.DB?.prepare) return globalObj.DB;
 
-  // 3. AGGRESSIVE SCAN: Look for any global object that has a .prepare() function
-  // Cloudflare bindings are often injected directly into the global scope
+  // 3. SECRECY CHECK: OpenNext often hides the environment in a Symbol
+  const cfEnvSymbol = Symbol.for('cloudflare.env');
+  const cfEnv = (process.env as any)[cfEnvSymbol] || (globalThis as any)[cfEnvSymbol];
+  
+  if (cfEnv && cfEnv.measy_ai_db?.prepare) return cfEnv.measy_ai_db;
+  if (cfEnv && cfEnv.DB?.prepare) return cfEnv.DB;
+
+  // 4. AGGRESSIVE SCAN: Look for any global object that has a .prepare() function
   try {
-    for (const key in globalObj) {
+    for (const key of Object.getOwnPropertyNames(globalObj)) {
       const val = globalObj[key];
-      if (val && typeof val === 'object' && typeof val.prepare === 'function' && typeof val.batch === 'function') {
+      if (val && typeof val === 'object' && typeof val.prepare === 'function') {
         return val;
       }
     }
-  } catch (e) {
-    // Ignore scan errors
-  }
+  } catch (e) {}
 
   return null;
 }
 
 export function getDb() {
-  // Try to find the D1 binding
   const d1 = findD1Binding();
   if (d1) {
     return drizzleD1(d1, { schema });
   }
 
-  // Fallback to Libsql (Local Dev / Build Time)
-  // This helps when D1 is not found to at least not crash immediately
+  // Fallback to Libsql (Local Dev / Build Fallback)
   const env = (process.env || {}) as any;
   const databaseUrl = env.DATABASE_TURSO_DATABASE_URL || env.TURSO_DATABASE_URL || "file:./dev.db";
   const authToken = env.DATABASE_TURSO_AUTH_TOKEN || env.TURSO_AUTH_TOKEN;
 
+  // Important: If we are on Cloudflare and NO D1 is found, 
+  // falling back to Turso might fail if secrets aren't set correctly.
   const client = createClient({
     url: databaseUrl,
     authToken: authToken,
