@@ -2,6 +2,7 @@ import { PHASE_DEVELOPMENT_SERVER } from "next/constants.js";
 
 const sharedConfig = {
   output: "standalone",
+  serverExternalPackages: ["@libsql/client", "@libsql/hrana-client", "@libsql/isomorphic-ws", "libsql"],
   experimental: {
     serverActions: {
       bodySizeLimit: "2mb",
