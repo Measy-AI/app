@@ -7,8 +7,7 @@ import { buildAllowedHosts, buildTrustedOrigins, resolveAuthBaseUrl } from "@/li
 
 /**
  * Clean, standard initialization of Better Auth. 
- * Since 'db' is a regular Drizzle instance (backed by our smart Binding Proxy), 
- * this will work perfectly across all environments.
+ * Our new delegating 'db' provides absolute stability on Cloudflare.
  */
 export const auth = betterAuth({
   appName: "MeasyAI",
@@ -17,7 +16,7 @@ export const auth = betterAuth({
     fallback: resolveAuthBaseUrl(),
   },
   secret: process.env.BETTER_AUTH_SECRET || "dummy_secret_for_build",
-  database: drizzleAdapter(db, {
+  database: drizzleAdapter(db as any, {
     provider: "sqlite",
     schema,
   }),

@@ -2,58 +2,40 @@ import { drizzle } from "drizzle-orm/d1";
 import * as schema from "@/lib/schema";
 
 /**
- * THE UNIVERSAL D1 SCANNER
- * Searches globalThis and process.env for anything that looks like a D1 binding.
+ * THE CLEAN DISCOVERY
+ * No proxies, just a direct search at the moment of the request.
  */
-function findD1Binding() {
+export function getRawD1Binding() {
   const globalObj = globalThis as any;
   const env = (process.env || {}) as any;
   
-  const targets = [
-    globalObj, 
-    env, 
-    globalObj.process?.env,
-    globalObj.__cloudflare_env__,
-    globalObj.env
-  ];
-
-  for (const target of targets) {
-    if (!target) continue;
-    
-    // Look for any property that has 'prepare' and 'batch'
-    for (const key of Object.getOwnPropertyNames(target)) {
-      try {
-        const val = target[key];
-        if (val && typeof val.prepare === 'function' && typeof val.batch === 'function') {
-          console.log(`[DB-SCANNER] Found D1 binding at key: ${key}`);
-          return val;
-        }
-      } catch (e) {
-        // Some properties might throw on access
-      }
-    }
-  }
-
-  // Last ditch effort: Try known names explicitly
-  return globalObj.measy_ai_db || env.measy_ai_db || globalObj.DB || env.DB;
+  const bindingName = 'measy_ai_db';
+  return globalObj[bindingName] || 
+         env[bindingName] || 
+         globalObj.DB || 
+         env.DB ||
+         Reflect.get(globalObj, bindingName);
 }
 
-const d1Proxy = new Proxy({} as any, {
-  get(_, prop) {
-    const d1 = findD1Binding();
-
-    if (!d1) {
-      // Build-time dummy
-      if (prop === 'prepare') return () => ({ bind: () => ({ all: async () => [] }) });
-      return undefined;
-    }
-
-    const value = d1[prop];
-    return typeof value === "function" ? value.bind(d1) : value;
-  },
-  getOwnPropertyDescriptor(_, prop) {
-    return { enumerable: true, configurable: true };
+/**
+ * Returns a fresh Drizzle instance using the current D1 binding.
+ */
+export function getDb() {
+  const d1 = getRawD1Binding();
+  if (!d1) {
+    throw new Error("D1 Binding 'measy_ai_db' not found. Ensure Cloudflare environment is ready.");
   }
-});
+  return drizzle(d1, { schema });
+}
 
-export const db = drizzle(d1Proxy, { schema });
+// We still export 'db' for compatibility, but as a direct lookup object
+export const db = {
+  select: (...args: any[]) => (getDb() as any).select(...args),
+  insert: (...args: any[]) => (getDb() as any).insert(...args),
+  update: (...args: any[]) => (getDb() as any).update(...args),
+  delete: (...args: any[]) => (getDb() as any).delete(...args),
+  query: (getDb() as any).query,
+  run: (sql: any) => getDb().run(sql),
+  all: (sql: any) => getDb().all(sql),
+  batch: (sqls: any[]) => getDb().batch(sqls as any),
+} as any;
